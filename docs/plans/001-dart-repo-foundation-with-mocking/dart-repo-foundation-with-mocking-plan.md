@@ -356,21 +356,21 @@ Every test **MUST** explain its value through the Test Doc block (5 required fie
 
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
-| 1.1 | [ ] | Create `packages/skyecho/pubspec.yaml` with project metadata | File exists with name, description, SDK constraints | - | packages/skyecho/pubspec.yaml |
-| 1.2 | [ ] | Add dependencies with compatible ranges | `http: ^1.2.1`, `html: ^0.15.4` with dev dependency `test: ^1.24.0` | - | Use `^` per spec |
-| 1.3 | [ ] | Create `packages/skyecho/analysis_options.yaml` | Strict mode enabled, common lints configured | - | Reference Effective Dart lints |
-| 1.4 | [ ] | Create monorepo directory structure | packages/skyecho/lib/, packages/skyecho/test/unit/, packages/skyecho/test/integration/, packages/skyecho/test/fixtures/, packages/skyecho/test/scratch/, packages/skyecho/example/, docs/how/ exist | - | Use absolute paths |
-| 1.5 | [ ] | Create `justfile` at root with recipes | Recipes: install, analyze, format, test, test-unit, test-integration, test-all (use cd packages/skyecho &&) | - | Document in README how to use |
-| 1.6 | [ ] | Update `.gitignore` | Exclude: .dart_tool/, build/, **/scratch/ (project convention), packages/skyecho/pubspec.lock (library only), .packages | - | **/scratch/ = project-wide convention |
-| 1.7 | [ ] | Run `cd packages/skyecho && dart pub get` to verify setup | Dependencies resolve without errors | - | |
-| 1.8 | [ ] | Run `cd packages/skyecho && dart analyze` on empty project | Passes with no errors (no code yet) | - | |
+| 1.1 | [x] | Create `packages/skyecho/pubspec.yaml` with project metadata | File exists with name, description, SDK constraints | [📋](tasks/phase-1-project-foundation/execution.log.md#t002-t006-create-and-configure-pubspecyaml-) | Completed T002-T006 |
+| 1.2 | [x] | Add dependencies with compatible ranges | `http: ^1.2.1`, `html: ^0.15.4` with dev dependency `test: ^1.24.0` | [📋](tasks/phase-1-project-foundation/execution.log.md#t002-t006-create-and-configure-pubspecyaml-) | Added `lints: ^5.0.0` for analysis |
+| 1.3 | [x] | Create `packages/skyecho/analysis_options.yaml` | Strict mode enabled, common lints configured | [📋](tasks/phase-1-project-foundation/execution.log.md#t007-t008-create-and-configure-analysis_optionsyaml-) | Removed deprecated `package_api_docs` |
+| 1.4 | [x] | Create monorepo directory structure | packages/skyecho/lib/, packages/skyecho/test/unit/, packages/skyecho/test/integration/, packages/skyecho/test/fixtures/, packages/skyecho/test/scratch/, packages/skyecho/example/, docs/how/ exist | [📋](tasks/phase-1-project-foundation/execution.log.md#t009-t012-create-directory-structure-) | All directories created |
+| 1.5 | [x] | Create `justfile` at root with recipes | Recipes: install, analyze, format, test, test-unit, test-integration, test-all (use cd packages/skyecho &&) | [📋](tasks/phase-1-project-foundation/execution.log.md#t013-t014-create-justfile-with-monorepo-recipes-) | 17 recipes with aliases |
+| 1.6 | [x] | Update `.gitignore` | Exclude: .dart_tool/, build/, **/scratch/ (project convention), packages/skyecho/pubspec.lock (library only), .packages | [📋](tasks/phase-1-project-foundation/execution.log.md#t015-t016-configure-gitignore-) | Scratch exclusion verified |
+| 1.7 | [x] | Run `cd packages/skyecho && dart pub get` to verify setup | Dependencies resolve without errors | [📋](tasks/phase-1-project-foundation/execution.log.md#t017-run-just-install-) | 51 dependencies resolved |
+| 1.8 | [x] | Run `cd packages/skyecho && dart analyze` on empty project | Passes with no errors (no code yet) | [📋](tasks/phase-1-project-foundation/execution.log.md#t018-run-just-analyze-) | Zero issues found |
 
 #### Acceptance Criteria
-- [ ] `cd packages/skyecho && dart pub get` succeeds
-- [ ] `cd packages/skyecho && dart analyze` passes
-- [ ] Monorepo directory structure created correctly
-- [ ] `justfile` recipes execute without error
-- [ ] `.gitignore` excludes **/scratch/ (project-wide convention)
+- [x] `cd packages/skyecho && dart pub get` succeeds
+- [x] `cd packages/skyecho && dart analyze` passes
+- [x] Monorepo directory structure created correctly
+- [x] `justfile` recipes execute without error
+- [x] `.gitignore` excludes **/scratch/ (project-wide convention)
 
 ---
 
@@ -1262,7 +1262,7 @@ See [docs/how/skyecho-library/](docs/how/skyecho-library/) for detailed guides.
 
 ### Phase Completion Checklist
 
-- [ ] Phase 1: Project Foundation & Structure - PENDING
+- [x] Phase 1: Project Foundation & Structure - COMPLETE (2025-10-17)
 - [ ] Phase 2: Capture Real Device HTML Fixtures - PENDING
 - [ ] Phase 3: Error Hierarchy & HTTP Infrastructure (TAD) - PENDING
 - [ ] Phase 4: HTML Parsing - DeviceStatus (TAD) - PENDING
@@ -1272,6 +1272,8 @@ See [docs/how/skyecho-library/](docs/how/skyecho-library/) for detailed guides.
 - [ ] Phase 8: Example CLI Application - PENDING
 - [ ] Phase 9: Documentation (Hybrid) - PENDING
 - [ ] Phase 10: Final Polish & Validation - PENDING
+
+**Overall Progress**: 1/10 phases (10%)
 
 ### STOP Rule
 

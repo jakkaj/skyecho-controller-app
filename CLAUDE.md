@@ -174,6 +174,39 @@ skyecho-controller-app/
 
 ## Critical Rules
 
+### Git Command Policy
+
+**Read-Only Git Commands** (allowed without confirmation):
+- ✅ `git status` - Check repository state
+- ✅ `git diff` - View changes
+- ✅ `git log` - View commit history
+- ✅ `git show` - View commit details
+- ✅ `git branch` (list only) - View branches
+- ✅ `git remote -v` - View remotes
+
+**Modifying Git Commands** (MUST get explicit user approval first):
+- ⚠️ **MUST NEVER** run `git add`, `git commit`, `git push`, `git pull`, `git merge`, `git rebase`, `git reset`, `git stash`, or any other modifying git command without **FIRST** clearly explaining:
+  1. What command will be run
+  2. What changes will be made
+  3. What files will be affected
+  4. Why this action is necessary
+  5. **THEN** waiting for explicit user approval before executing
+
+**Example of Required Workflow**:
+```
+❌ WRONG: Running `git add .` without asking
+✅ CORRECT:
+  "I need to stage the following files for commit:
+   - packages/skyecho/lib/skyecho.dart
+   - packages/skyecho/test/unit/errors_test.dart
+
+   Command: git add packages/skyecho/lib/skyecho.dart packages/skyecho/test/unit/errors_test.dart
+
+   May I proceed with staging these files?"
+
+   [Wait for user response before executing]
+```
+
 ### Code Standards
 
 - **MUST** run `dart analyze` clean before committing

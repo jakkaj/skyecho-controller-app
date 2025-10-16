@@ -69,6 +69,24 @@
 
 **Justfile-First Philosophy**: We validate using justfile recipes (`just install`, `just analyze`) rather than direct Dart commands. This ensures the developer workflow is tested end-to-end, not just individual tools. Justfile becomes the canonical interface for all project operations.
 
+**Non-Goals (Scope Boundaries)**:
+
+❌ **NOT doing in this phase**:
+- **No business logic implementation** - Phase 1 is pure configuration/structure (actual library code starts in Phase 3)
+- **No test code** - No unit tests or integration tests written (test directories created but empty)
+- **No HTML fixture capture** - Deferring to Phase 2 (requires physical device)
+- **No parsing logic** - DeviceStatus and SetupForm parsing deferred to Phases 4-5
+- **No error hierarchy** - SkyEchoError classes deferred to Phase 3
+- **No HTTP client code** - SkyEchoClient implementation deferred to Phase 3+
+- **No example app** - CLI example deferred to Phase 8
+- **No documentation content** - README and docs/how/ guides deferred to Phase 9
+- **No CI/CD configuration** - GitHub Actions or other CI out of scope for initial plan
+- **No performance optimization** - Structure is lightweight; no optimization needed
+- **No external integrations** - Just local project setup
+- **No migration of existing code** - Greenfield project with no legacy code
+
+**Rationale**: Phase 1 establishes the empty vessel (directory structure, configuration files, build tooling) that all subsequent phases will fill with actual functionality. Keeping this phase minimal ensures we can validate the project skeleton before writing any code.
+
 **Behavior Checklist**:
 - [ ] Monorepo structure created with packages/ directory
 - [ ] Library package follows standard Dart conventions (lib/, test/, pubspec.yaml)
@@ -240,6 +258,12 @@ sequenceDiagram
 **Testing Approach for Phase 1**: Lightweight (No TAD)
 
 **Rationale**: Phase 1 is purely configuration and setup with no business logic. Testing consists of validation commands rather than unit tests.
+
+**Physical Device Availability**: **SkyEcho 2 device is accessible at http://192.168.4.1** during development. This device can be used in Phase 2+ for:
+- Capturing real HTML fixtures (`curl http://192.168.4.1/ > test/fixtures/landing_page_sample.html`)
+- Testing live JSON endpoint (`curl http://192.168.4.1/?action=get`)
+- Validating parsing logic against actual firmware responses
+- Integration testing with real hardware (Phase 7)
 
 **Validation Strategy**:
 - **No unit tests required** for configuration files (would be trivial/non-valuable)
@@ -449,6 +473,7 @@ rm -f packages/skyecho/pubspec.lock
 - Dart SDK 3.0+ is installed on developer machine
 - just command runner is installed (for justfile execution)
 - Git is initialized in repository
+- **Physical SkyEcho 2 device available at http://192.168.4.1** for capturing test fixtures (Phase 2+)
 
 ---
 

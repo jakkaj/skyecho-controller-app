@@ -4,8 +4,13 @@
 .dart_tool/
 .packages
 build/
-# If you're building an application, you may want to check-in your pubspec.lock
-pubspec.lock
+
+# Library packages should NOT commit pubspec.lock (apps should)
+# Exclude library package lock files only
+packages/skyecho/pubspec.lock
+
+# Project convention: exclude scratch test directories anywhere in tree
+**/scratch/
 
 # Directory created by dartdoc
 # If you don't generate documentation locally you can remove this line.

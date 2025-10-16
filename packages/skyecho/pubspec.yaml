@@ -1,0 +1,15 @@
+name: skyecho
+description: A Dart library for programmatic control of uAvionix SkyEcho 2 ADS-B devices via screen-scraping their web interface.
+version: 0.1.0
+repository: https://github.com/jordanknight/skyecho-controller-app
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  http: ^1.2.1
+  html: ^0.15.4
+
+dev_dependencies:
+  test: ^1.24.0
+  lints: ^5.0.0

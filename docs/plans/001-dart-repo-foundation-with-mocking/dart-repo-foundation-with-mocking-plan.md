@@ -395,20 +395,20 @@ Every test **MUST** explain its value through the Test Doc block (5 required fie
 
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
-| 2.1 | [ ] | Connect to SkyEcho WiFi network | Computer connected to SkyEcho_XXXX network | - | Document SSID and password |
-| 2.2 | [ ] | Verify device reachable | `curl http://192.168.4.1/` returns HTML | - | Use browser or curl |
-| 2.3 | [ ] | Capture landing page HTML | Save HTML source to packages/skyecho/test/fixtures/landing_page_sample.html | - | View source or curl -o |
-| 2.4 | [ ] | Capture setup page HTML | Save HTML source to packages/skyecho/test/fixtures/setup_form_sample.html | - | Navigate to /setup first |
-| 2.5 | [ ] | Document firmware version | Create packages/skyecho/test/fixtures/README.md with Wi-Fi version, ADS-B version, capture date | - | Extract from HTML or device display |
-| 2.6 | [ ] | Verify HTML includes all field types | Setup form has: text, checkbox, radio, select elements | - | Manual inspection |
-| 2.7 | [ ] | Verify HTML includes status table | Landing page has "Current Status" table with key/value pairs | - | Manual inspection |
+| 2.1 | [x] | Connect to SkyEcho WiFi network | Computer connected to SkyEcho_XXXX network | [📋](tasks/phase-2-capture-real-device-html-fixtures/execution.log.md#t001-connect-to-skyecho-wifi-network-) | SSID: SkyEcho_3155 |
+| 2.2 | [x] | Verify device reachable | `curl http://192.168.4.1/` returns HTML | [📋](tasks/phase-2-capture-real-device-html-fixtures/execution.log.md#t002-verify-device-accessibility-) | HTTP 200 OK, 4676 bytes |
+| 2.3 | [x] | Capture landing page HTML | Save HTML source to packages/skyecho/test/fixtures/landing_page_sample.html | [📋](tasks/phase-2-capture-real-device-html-fixtures/execution.log.md#t003-capture-landing-page-html-) | 4.6KB captured via curl |
+| 2.4 | [x] | Capture setup page HTML | Save HTML source to packages/skyecho/test/fixtures/setup_form_sample.html | [📋](tasks/phase-2-capture-real-device-html-fixtures/execution.log.md#t004-capture-setup-form-html-) | 13KB captured via curl |
+| 2.5 | [x] | Document firmware version | Create packages/skyecho/test/fixtures/README.md with Wi-Fi version, ADS-B version, capture date | [📋](tasks/phase-2-capture-real-device-html-fixtures/execution.log.md#t005-extract-and-document-firmware-versions-) | WiFi 0.2.41-SkyEcho, ADS-B 2.6.13 |
+| 2.6 | [x] | Verify HTML includes all field types | Setup form has: text, checkbox, radio, select elements | [📋](tasks/phase-2-capture-real-device-html-fixtures/execution.log.md#t006-verify-setup-form-field-types-) | text=4, checkbox=5, radio=3, select=6 |
+| 2.7 | [x] | Verify HTML includes status table | Landing page has "Current Status" table with key/value pairs | [📋](tasks/phase-2-capture-real-device-html-fixtures/execution.log.md#t007-verify-landing-page-status-table-) | 9 status fields present |
 
 #### Acceptance Criteria
-- [ ] Both fixture files captured and committed
-- [ ] Firmware version documented in fixtures/README.md
-- [ ] HTML samples represent actual device structure
-- [ ] All expected form field types present in setup form
-- [ ] Status table present in landing page
+- [x] Both fixture files captured and committed
+- [x] Firmware version documented in fixtures/README.md
+- [x] HTML samples represent actual device structure
+- [x] All expected form field types present in setup form
+- [x] Status table present in landing page
 
 ---
 
@@ -1263,7 +1263,7 @@ See [docs/how/skyecho-library/](docs/how/skyecho-library/) for detailed guides.
 ### Phase Completion Checklist
 
 - [x] Phase 1: Project Foundation & Structure - COMPLETE (2025-10-17)
-- [ ] Phase 2: Capture Real Device HTML Fixtures - PENDING
+- [x] Phase 2: Capture Real Device HTML Fixtures - COMPLETE (2025-10-17)
 - [ ] Phase 3: Error Hierarchy & HTTP Infrastructure (TAD) - PENDING
 - [ ] Phase 4: HTML Parsing - DeviceStatus (TAD) - PENDING
 - [ ] Phase 5: HTML Parsing - SetupForm (TAD) - PENDING
@@ -1273,7 +1273,7 @@ See [docs/how/skyecho-library/](docs/how/skyecho-library/) for detailed guides.
 - [ ] Phase 9: Documentation (Hybrid) - PENDING
 - [ ] Phase 10: Final Polish & Validation - PENDING
 
-**Overall Progress**: 1/10 phases (10%)
+**Overall Progress**: 2/10 phases (20%)
 
 ### STOP Rule
 

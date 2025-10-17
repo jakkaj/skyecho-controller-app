@@ -33,3 +33,4 @@ doc/api/
 .flutter-plugins
 .flutter-plugins-dependencies
 docs/plans/.DS_Store
+packages/skyecho/coverage/lcov.info

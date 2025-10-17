@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' name='viewport' content='width=device-width, user-scalable=yes'/>
+<title>ADS-B Setup</title>
+<style>
+	table {border-collapse: collapse; width: 75%; margin:auto;}
+	td {border: 1px solid; padding: 8px; height: 40px; width:25%;}
+	select, input[type=text], input[type=number] {width: 100%; text-align:right; text-align-last: right;}
+	input[type=submit] {width: 50%; height: 40px;}
+	.upper {text-transform: uppercase;}
+	.noborder {border: none;}
+	body {text-align:center;}
+	div {text-align: left; display: inline-block;}
+	#container {display: flex; align-items: center; justify-content: center; height:50px;}
+	#indicator{font-size:50px; margin-right: 10px;}
+	#loader {
+	box-sizing: border-box;
+	border: 10px solid #f3f3f3;
+	border-top: 10px solid #d71928;
+	border-radius: 50%;
+	width: 50px; height: 50px;
+	-webkit-animation: spin 2s linear infinite;
+	animation: spin 2s linear infinite;
+	}
+	@-webkit-keyframes spin {
+	0% { -webkit-transform: rotate(0deg); }
+	100% { -webkit-transform: rotate(360deg); }
+	}
+	@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+	}
+</style>
+<script type="text/javascript">
+
+String.prototype.format = function () {
+	a = this;
+	for (k in arguments) {
+		a = a.replace("{" + k + "}", arguments[k])
+	}
+	return a
+}
+
+String.prototype.padStart = function (count, pad) {
+	var padString = new Array(count + 1).join(pad);
+	return String(padString + this).slice(-count);
+}
+
+HTMLCollection.prototype.getInt = function (key) {
+	return parseInt(this[key].value);
+}
+
+function updateGui() {
+	let flarmId = document.getElementById("flarmId");
+	let filterFlarm = document.getElementById("filterFlarm");
+
+	filterFlarm.disabled = !flarmRx.checked;
+	filterFlarm.checked &= flarmRx.checked;
+	flarmId.disabled = filterFlarm.disabled || !filterFlarm.checked;
+}
+
+function updateAircraftWidthOptions(lengthValue) {
+	var lengthOption = lengthValue;
+	var widthSelect = document.getElementById("aircraftWidth");
+
+	while (widthSelect.length)
+		widthSelect.remove(0);
+
+	var limits = [
+		{ low: 23, high: null },
+		{ low: 28.5, high: 34 },
+		{ low: 33, high: 38 },
+		{ low: 39.5, high: 45 },
+		{ low: 45, high: 52 },
+		{ low: 59.5, high: 67 },
+		{ low: 72.5, high: 80 },
+		{ low: 80, high: 80 }];
+
+	lengthOption = (lengthOption == "null") ? null : parseInt(lengthOption);
+	var width = limits[lengthOption];
+
+	if (width == null) {
+		widthSelect.add(new Option("No Data", 0));
+		return;
+	}
+
+	widthSelect.add(new Option("W \u2264 {0} m".format(width.low), (width.high != null) ? 0 : 1));
+
+	if (width.low != width.high && width.high)
+		widthSelect.add(new Option("{0} m < W \u2264 {1} m".format(width.low, width.high), 1));
+	else if (width.high != null)
+		widthSelect.add(new Option("W > {0} m".format(width.high), 1));
+
+}
+
+function setStatus(success, message) {
+	document.getElementById("status").innerHTML = message;
+
+	if (success == null)
+		document.getElementById("indicator").innerHTML = "<div id='loader'></div>";
+	else
+		document.getElementById("indicator").innerHTML = success ? "&check;" : "&#10005;";
+	document.getElementById("indicator").style.color = success ? "green" : "red";
+}
+
+function sendJson(json, callback) {
+	var xhr = new XMLHttpRequest();
+	xhr.onreadystatechange = function () {
+		if (xhr.readyState == XMLHttpRequest.DONE) {
+			callback(xhr.status)
+		}
+	};
+
+	xhr.open("POST", window.location.href + "/?action=set");
+	xhr.timeout = 5000;
+	xhr.setRequestHeader("Content-Type", "application/json");
+	xhr.send(json);
+}
+
+function sendSettings(form) {
+	var formData = form.elements;
+
+	var setup = {};
+	setup.icaoAddress = parseInt(formData["icaoAddress"].value, 16);
+	setup.callsign = formData["callsign"].value.toUpperCase();
+	setup.emitterCategory = formData.getInt("emitterCategory");
+
+	var adsbInCapability = 0;
+	var capabilities = formData["adsbInCapability"];
+	for (var i = 0; i < capabilities.length; i++)
+		adsbInCapability |= (capabilities[i].checked) ? capabilities[i].value : 0;
+
+	setup.adsbInCapability = adsbInCapability;
+
+	var pingControlState = 0;
+	var controls = formData["pingControlState"];
+	for (var i = 0; i < controls.length; i++)
+		pingControlState |= (controls[i].checked) ? controls[i].value : 0;
+
+	setup.control = pingControlState;
+
+	setup.vfrSquawk = formData.getInt("vfrSquawk");
+
+	var aircraftLength = formData["aircraftLength"].value;
+	aircraftLength = (aircraftLength == "null") ? 0 : parseInt(aircraftLength);
+	var aircraftWidth = formData.getInt("aircraftWidth");
+
+	setup.aircraftLengthWidth = (aircraftLength << 1) | aircraftWidth;
+
+	var latGpsOffset = formData.getInt("gpsLatOffset");
+	var lonGpsOffset = formData.getInt("gpsLonOffset");
+	var lonGpsOffset = (lonGpsOffset != 0) ? (lonGpsOffset / 2 + 1) : 0;
+
+	setup.gpsAntennaOffset = (latGpsOffset << 5) | lonGpsOffset;
+
+	setup.stallSpeed = Math.ceil((formData.getInt("stallSpeed") * 5144) / 10);
+
+	setup.SIL = 1; // formData.getInt("SIL");
+	setup.SDA = formData.getInt("SDA");
+
+	let ownshipFilter = {};
+	ownshipFilter.icaoAddress = formData["filterAdsb"].checked ? parseInt(formData["icaoAddress"].value, 16) : null;
+	ownshipFilter.flarmId = formData["filterFlarm"].checked ? parseInt(formData["flarmId"].value, 16) : null;
+	
+	var settings = {};
+	settings.setup = setup;
+	settings.ownshipFilter = ownshipFilter;
+
+	function setCallback(status) {
+		if (status == 200) {
+			message = "Configuration updated.";
+			setTimeout(loadSettings, 2000);
+		} else {
+			message = "Failed to set configuration. Error: ";
+			message += (status != 0) ? xhr.responseText : "Timeout";
+		}
+		setStatus((status == 200), message);
+	}
+
+	sendJson(JSON.stringify(settings), setCallback);
+	setStatus(null, "Sending configuration...");
+}
+
+function updateForm(settings) {
+	var form = document.getElementById("setupForm").elements;
+
+	// Setup fields
+	var setup = settings.setup;
+	form["icaoAddress"].value = setup.icaoAddress.toString(16).padStart(6, '0');
+	form["callsign"].value = setup.callsign;
+	form["emitterCategory"].value = setup.emitterCategory;
+	form["stallSpeed"].value = Math.ceil((setup.stallSpeed * 10) / 5144);
+	form["vfrSquawk"].value = setup.vfrSquawk;
+
+	var capabilities = form["adsbInCapability"];
+	for (var i = 0; i < capabilities.length; i++)
+		capabilities[i].checked = ((capabilities[i].value & setup.adsbInCapability) == capabilities[i].value);
+
+	var controls = form["pingControlState"];
+	for (var i = 0; i < controls.length; i++)
+		controls[i].checked = ((controls[i].value & setup.control) == controls[i].value);
+
+	var aircraftLengthWidth = setup.aircraftLengthWidth;
+	var aircraftLength = (aircraftLengthWidth == 0) ? null : aircraftLengthWidth >> 1;
+	var aircraftWidth = aircraftLengthWidth & 0x01;
+	form["aircraftLength"].value = aircraftLength;
+	updateAircraftWidthOptions(aircraftLength);
+	form["aircraftWidth"].value = aircraftWidth;
+
+	var gpsAntennaOffset = setup.gpsAntennaOffset;
+	var latGpsOffset = gpsAntennaOffset >> 5;
+	var lonGpsOffset = (gpsAntennaOffset & 0x1F);
+	lonGpsOffset = (lonGpsOffset) ? 2 * (lonGpsOffset - 1) : 0;
+	form["gpsLatOffset"].value = latGpsOffset;
+	form["gpsLonOffset"].value = lonGpsOffset;
+
+	// form["SIL"].value = setup.SIL;
+	form["SDA"].value = setup.SDA;
+
+	updateGui();
+
+	// Ownship filter
+	var ownship = settings.ownshipFilter;
+	form["flarmId"].value = ownship.flarmId ? ownship.flarmId.toString(16).padStart(6, '0') : "";
+	form["filterFlarm"].checked = (ownship.flarmId != null)
+	form["filterAdsb"].checked = (ownship.icaoAddress != null);
+	
+}
+
+function loadSettings() {
+	var xhr = new XMLHttpRequest();
+	xhr.onreadystatechange = function () {
+		if (xhr.readyState == XMLHttpRequest.DONE) {
+			if (xhr.status == 200) {
+				updateForm(JSON.parse(this.responseText));
+				message = "Configuration loaded.";
+			}
+			else {
+				message = "Failed to load configuration. Error: "
+				message += (xhr.status != 0) ? xhr.responseText : "Timeout";
+			}
+			setStatus((xhr.status == 200), message);
+		}
+	};
+
+	xhr.open("GET", window.location.href + "/?action=get");
+	xhr.timeout = 5000;
+	xhr.send();
+
+	setStatus(null, "Loading configuration...")
+}
+
+function factoryReset() {
+	if (confirm("Reset device to factory settings?")) {
+		var settings = {};
+		settings["loadDefaults"] = true;
+
+		function resetCallback(status) {
+			if (status == 200)
+				setTimeout(loadSettings, 2000);
+			else {
+				message = "Failed to reset configuration. Error: ";
+				message += (status != 0) ? xhr.responseText : "Timeout";
+				setStatus(false, message);
+			}
+		}
+
+		sendJson(JSON.stringify(settings), resetCallback);
+		setStatus(null, "Resetting configuration...")
+	}
+}
+
+window.onload = function () {
+	updateAircraftWidthOptions(document.getElementById("aircraftLength").value);
+	loadSettings();
+};
+</script>
+</head>
+<body>
+	<h2>ADS-B Setup</h2>
+	<div id="container">
+	<span id="indicator"></span>
+	<p id="status"></p>
+	</div>
+	<form id="setupForm" action="javascript:void(0);" method="post" onsubmit="sendSettings(this)">
+	<h3>Setup</h3>
+	<table>
+	<tr>
+	<td>1090ES Transmit:</td>
+	<td>
+	<label><input type="checkbox" id="es1090Tx" name="pingControlState" value="2">Enable</label>
+	</td>
+
+	<td>Receiver Mode:</td>
+	<td>
+	<label><input type="radio" id="rxEnabled" name="pingControlState" value="1" checked="true" onchange="updateGui()">UAT</label>
+	</br>
+	<label><input type="radio" id="flarmRx" name="pingControlState" value="65" onchange="updateGui()">FLARM (EU ONLY)</label>
+	</br>
+	<label><input type="radio" disabled="true" checked="true">1090ES</label>
+	</td>
+	</tr>
+
+	<tr>
+	<td>ICAO Address (hex):</td>
+	<td><input type="text" id="icaoAddress" class="upper" name="icaoAddress" maxlength="8" required pattern="(?:^0x)?(?!f{6}|F{6}|0{6})[A-Fa-f0-9]{6}"></td>
+
+	<td>Callsign:</td>
+	<td><input type="text" id="callsign" class="upper" name="callsign" maxlength="8" required pattern="[A-Za-z0-9]{1,8}"></td>
+	</tr>
+
+	<tr>
+	<td>FLARM ID (hex):</td>
+	<td><input type="text" id="flarmId" class="upper" name="flarmId" maxlength="8" pattern="(?:^0x)?(?!f{6}|F{6}|0{6})[A-Fa-f0-9]{6}"></td>
+	
+	<td>Ownship Filter:</td>
+	<td>
+	<div>
+	<label><input type="checkbox" id="filterAdsb" name="filterAdsb" checked="true">Filter ADS-B</label><br>
+	<label><input type="checkbox" id="filterFlarm" name="filterFlarm" checked="true" onchange="updateGui()">Filter FLARM</label>
+	</div>
+	</td>
+	</tr>
+
+	<tr>
+	<td>Emitter Category:</td>
+	<td>
+	<select id="emitterCategory" name="emitterCategory">
+	<option value="0">No Info</option>
+	<option value="1">Light</option>
+	<option value="2">Small</option>
+	<option value="3">Large</option>
+	<option value="4">High Vortex</option>
+	<option value="5">Heavy</option>
+	<option value="6">Highly Maneuverable</option>
+	<option value="7">Rotorcraft</option>
+	<option value="9">Glider/Sailplane</option>
+	<option value="10">Lighter Than Air</option>
+	<option value="11">Parachutist</option>
+	<option value="12">Ultra Light</option>
+	<option value="14">UAV</option>
+	<option value="15">Space</option>
+	<option value="17">Surface - Emergency</option>
+	<option value="18">Surface - Service</option>
+	<option value="19">Point Obstacle</option>
+	<option value="20">Cluster Obstacle</option>
+	<option value="21">Line Obstacle</option>
+	</select>
+	</td>
+
+	<td>VFR Squawk:</td>
+	<td><input type="text" id="vfrSquawk" class="upper" name="vfrSquawk" maxlength="4" required pattern="[0-7]{4}"></td>
+	</tr>
+
+	<tr>
+	<td>ADS-B In Capability:</td>
+	<td>
+	<div>
+	<label><input type="checkbox" name="adsbInCapability" value="1">1090ES</label>
+	<label><input type="checkbox" name="adsbInCapability" value="2">UAT</label>
+	</div>
+	</td>
+
+	<td>V<sub>so</sub> (knots):</td>
+	<td><input type="number" id="stallSpeed" name="stallSpeed" step="1" min="0" max="100" value="0"></td>
+	</tr>
+
+	<tr>
+	<td>Aircraft Length:</td>
+	<td>
+	<select id="aircraftLength" name="aircraftLength" onchange="updateAircraftWidthOptions(this.value)">
+	<option value="null">No Data</option>
+	<option value="0">L &le; 15 m</option>
+	<option value="1">15 m &lt; L &le; 25 m</option>
+	<option value="2">25 m &lt; L &le; 35 m</option>
+	<option value="3">35 m &lt; L &le; 45 m</option>
+	<option value="4">45 m &lt; L &le; 55 m</option>
+	<option value="5">55 m &lt; L &le; 65 m</option>
+	<option value="6">65 m &lt; L &le; 75 m</option>
+	<option value="7">L &gt; 75 m</option>
+	</select>
+	</td>
+
+	<td>Aircraft Width:</td>
+	<td>
+	<select id="aircraftWidth" name="aircraftWidth">
+	<option value="null">No Data</option>
+	</select>
+	</td>
+	</tr>
+
+	<tr>
+	<td>Lateral GPS Offset:</td>
+	<td>
+	<select id="gpsLatOffset" name="gpsLatOffset">
+	<option value="0">No Data</option>
+	<option value="1">Left 2 m</option>
+	<option value="2">Left 4 m</option>
+	<option value="3">Left 6 m</option>
+	<option value="4">Center</option>
+	<option value="5">Right 2 m</option>
+	<option value="6">Right 4 m</option>
+	<option value="7">Right 6 m</option>
+	</select>
+	</td>
+
+	<td>Longitudinal GPS Offset (m):</td>
+	<td>
+	<input type="number" id="gpsLonOffset" name="gpsLonOffset" step="2" min="0" max="60" value="0">
+	</td>
+	</tr>
+
+	<tr>
+		<td>SDA</td>
+		<td>
+			<select id="SDA" name="SDA">
+				<option value="0">0</option>
+				<option value="1">1</option>
+			</select>
+		</td>
+		<td></td>
+		<td></td>
+		<!-- We are leaving SIL out of the current view. SIL is always 1 but we might want to expose it in the future -->
+		<!-- <td>SIL</td>
+		<td>
+		<select id="SIL" name="SIL">
+			<option value="1">1</option>
+		</select>
+		</td> -->
+	</tr>
+
+	<tr>
+	<td class="noborder" colspan="4">
+	<input type="submit" value="Apply">
+	</td>
+	</tr>
+
+	<tr>
+	<td class="noborder" colspan="4">
+	<input type="button" value="Reset to defaults" onclick="factoryReset()">
+	</td>
+	</tr>
+
+	<tr>
+	<td class="noborder" colspan="4">
+	<a href="/">Main Page</a>
+	</td>
+	</tr>
+</table>
+</form>
+</body>
+</html>
+ 

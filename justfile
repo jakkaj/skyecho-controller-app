@@ -63,6 +63,10 @@ coverage: lib-coverage
 
 # === Development Workflow ===
 
+# Format code and fix analyzer issues automatically
+fix: format
+    cd packages/skyecho && dart fix --apply
+
 # Full validation: install deps, analyze, format, run tests
 validate: install analyze test
 

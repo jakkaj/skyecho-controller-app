@@ -3,6 +3,8 @@
 /// A Dart library for programmatic control of uAvionix SkyEcho 2 ADS-B devices.
 library;
 
+import 'dart:convert' show jsonDecode;
+
 import 'package:http/http.dart' as http;
 
 // ============================================================================
@@ -179,6 +181,161 @@ class SkyEchoClient {
       );
     } on SkyEchoError {
       rethrow;
+    }
+  }
+
+  /// Fetches device status from JSON API endpoint.
+  ///
+  /// Sends GET request to `/?action=get` and parses JSON response.
+  /// Returns [DeviceStatus] with all available fields.
+  ///
+  /// Throws [SkyEchoNetworkError] on network failures.
+  /// Throws [SkyEchoHttpError] on non-200 status codes.
+  /// Throws [SkyEchoParseError] on JSON parsing failures.
+  Future<DeviceStatus> fetchStatus() async {
+    try {
+      final uri = Uri.parse('$baseUrl/?action=get');
+      final headers = <String, String>{};
+
+      // Add cookies if available
+      final cookie = _cookieJar.toHeader();
+      if (cookie != null) {
+        headers['cookie'] = cookie;
+      }
+
+      final response =
+          await _httpClient.get(uri, headers: headers).timeout(timeout);
+
+      // Ingest cookies from response
+      final setCookie = response.headers['set-cookie'];
+      if (setCookie != null) {
+        _cookieJar.ingest([setCookie]);
+      }
+
+      // Check status
+      if (response.statusCode != 200) {
+        throw SkyEchoHttpError(
+          'HTTP ${response.statusCode}: ${response.reasonPhrase ?? "Unknown"}',
+          hint: 'Ensure device is powered on and accessible at $baseUrl',
+        );
+      }
+
+      // Parse JSON
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      return DeviceStatus.fromJson(json);
+    } on http.ClientException catch (e) {
+      throw SkyEchoNetworkError(
+        'Network error: ${e.message}',
+        hint: 'Check WiFi connection and device IP address',
+      );
+    } on FormatException catch (e) {
+      throw SkyEchoParseError(
+        'Failed to parse JSON response: ${e.message}',
+        hint: 'Device may have returned invalid JSON. Check device firmware.',
+      );
+    } on SkyEchoError {
+      rethrow;
+    }
+  }
+}
+
+// ============================================================================
+// Device Status Model
+// ============================================================================
+
+/// Device status parsed from JSON API endpoint.
+///
+/// Fetched from `GET /?action=get` endpoint which returns device info as JSON.
+/// Contains 6 fields: wifiVersion, adsbVersion, ssid, clientsConnected,
+/// serialNumber, and coredump.
+class DeviceStatus {
+  /// Creates a DeviceStatus with the given fields.
+  ///
+  /// All fields except [coredump] are nullable to handle missing values.
+  DeviceStatus({
+    required this.wifiVersion,
+    required this.adsbVersion,
+    required this.ssid,
+    required this.clientsConnected,
+    required this.serialNumber,
+    required this.coredump,
+  });
+
+  /// Wi-Fi firmware version (e.g., "0.2.41-SkyEcho").
+  ///
+  /// Null if not present in JSON response.
+  final String? wifiVersion;
+
+  /// ADS-B firmware version (e.g., "2.6.13").
+  ///
+  /// Null if not present in JSON response.
+  final String? adsbVersion;
+
+  /// Device SSID (e.g., "SkyEcho_3155").
+  ///
+  /// Null if not present in JSON response.
+  final String? ssid;
+
+  /// Number of WiFi clients currently connected.
+  ///
+  /// Null if not present in JSON response.
+  final int? clientsConnected;
+
+  /// Device serial number (e.g., "0655339053").
+  ///
+  /// Null if not present in JSON response.
+  final String? serialNumber;
+
+  /// Whether device has a coredump (crash dump).
+  ///
+  /// Defaults to false if not present in JSON response.
+  final bool coredump;
+
+  /// Returns true if device has a coredump.
+  ///
+  /// Convenience getter for checking device health.
+  bool get hasCoredump => coredump == true;
+
+  /// Returns true if device appears healthy.
+  ///
+  /// Heuristic: device is healthy if no coredump AND has at least one client.
+  /// This is a simple health check, not authoritative device state.
+  bool get isHealthy =>
+      coredump == false &&
+      clientsConnected != null &&
+      clientsConnected! > 0;
+
+  /// Parses DeviceStatus from JSON map.
+  ///
+  /// Expects JSON structure from `GET /?action=get`:
+  /// ```json
+  /// {
+  ///   "wifiVersion": "0.2.41-SkyEcho",
+  ///   "ssid": "SkyEcho_3155",
+  ///   "clientCount": 1,
+  ///   "adsbVersion": "2.6.13",
+  ///   "serialNumber": "0655339053",
+  ///   "coredump": false
+  /// }
+  /// ```
+  ///
+  /// All fields are optional except coredump (defaults to false).
+  /// Throws [SkyEchoParseError] if JSON structure is invalid.
+  factory DeviceStatus.fromJson(Map<String, dynamic> json) {
+    try {
+      return DeviceStatus(
+        wifiVersion: json['wifiVersion'] as String?,
+        adsbVersion: json['adsbVersion'] as String?,
+        ssid: json['ssid'] as String?,
+        clientsConnected: json['clientCount'] as int?,
+        serialNumber: json['serialNumber'] as String?,
+        coredump: json['coredump'] as bool? ?? false,
+      );
+    } catch (e) {
+      throw SkyEchoParseError(
+        'Failed to parse DeviceStatus from JSON: $e',
+        hint: 'Ensure JSON has expected structure from GET /?action=get',
+      );
     }
   }
 }

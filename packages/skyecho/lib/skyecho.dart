@@ -441,11 +441,115 @@ class SkyEchoClient {
     // Verify changes via GET
     final verifiedConfig = await fetchSetupConfig();
 
+    // Compare newConfig vs verifiedConfig to detect mismatches
+    final mismatches = <String, List<dynamic>>{};
+
+    if (newConfig.icaoAddress != verifiedConfig.icaoAddress) {
+      mismatches['icaoAddress'] = [
+        newConfig.icaoAddress,
+        verifiedConfig.icaoAddress
+      ];
+    }
+    if (newConfig.callsign != verifiedConfig.callsign) {
+      mismatches['callsign'] = [newConfig.callsign, verifiedConfig.callsign];
+    }
+    if (newConfig.emitterCategory != verifiedConfig.emitterCategory) {
+      mismatches['emitterCategory'] = [
+        newConfig.emitterCategory,
+        verifiedConfig.emitterCategory
+      ];
+    }
+    if (newConfig.uatEnabled != verifiedConfig.uatEnabled) {
+      mismatches['uatEnabled'] = [
+        newConfig.uatEnabled,
+        verifiedConfig.uatEnabled
+      ];
+    }
+    if (newConfig.es1090Enabled != verifiedConfig.es1090Enabled) {
+      mismatches['es1090Enabled'] = [
+        newConfig.es1090Enabled,
+        verifiedConfig.es1090Enabled
+      ];
+    }
+    if (newConfig.es1090TransmitEnabled !=
+        verifiedConfig.es1090TransmitEnabled) {
+      mismatches['es1090TransmitEnabled'] = [
+        newConfig.es1090TransmitEnabled,
+        verifiedConfig.es1090TransmitEnabled
+      ];
+    }
+    if (newConfig.receiverMode != verifiedConfig.receiverMode) {
+      mismatches['receiverMode'] = [
+        newConfig.receiverMode,
+        verifiedConfig.receiverMode
+      ];
+    }
+    if (newConfig.aircraftLength != verifiedConfig.aircraftLength) {
+      mismatches['aircraftLength'] = [
+        newConfig.aircraftLength,
+        verifiedConfig.aircraftLength
+      ];
+    }
+    if (newConfig.aircraftWidth != verifiedConfig.aircraftWidth) {
+      mismatches['aircraftWidth'] = [
+        newConfig.aircraftWidth,
+        verifiedConfig.aircraftWidth
+      ];
+    }
+    if (newConfig.gpsLatOffset != verifiedConfig.gpsLatOffset) {
+      mismatches['gpsLatOffset'] = [
+        newConfig.gpsLatOffset,
+        verifiedConfig.gpsLatOffset
+      ];
+    }
+    if (newConfig.gpsLonOffsetMeters != verifiedConfig.gpsLonOffsetMeters) {
+      mismatches['gpsLonOffsetMeters'] = [
+        newConfig.gpsLonOffsetMeters,
+        verifiedConfig.gpsLonOffsetMeters
+      ];
+    }
+    if (newConfig.sil != verifiedConfig.sil) {
+      mismatches['sil'] = [newConfig.sil, verifiedConfig.sil];
+    }
+    if (newConfig.sda != verifiedConfig.sda) {
+      mismatches['sda'] = [newConfig.sda, verifiedConfig.sda];
+    }
+    if (newConfig.stallSpeedKnots != verifiedConfig.stallSpeedKnots) {
+      mismatches['stallSpeedKnots'] = [
+        newConfig.stallSpeedKnots,
+        verifiedConfig.stallSpeedKnots
+      ];
+    }
+    if (newConfig.vfrSquawk != verifiedConfig.vfrSquawk) {
+      mismatches['vfrSquawk'] = [
+        newConfig.vfrSquawk,
+        verifiedConfig.vfrSquawk
+      ];
+    }
+    if (newConfig.ownshipFilterIcao != verifiedConfig.ownshipFilterIcao) {
+      mismatches['ownshipFilterIcao'] = [
+        newConfig.ownshipFilterIcao,
+        verifiedConfig.ownshipFilterIcao
+      ];
+    }
+    if (newConfig.ownshipFilterFlarmId != verifiedConfig.ownshipFilterFlarmId) {
+      mismatches['ownshipFilterFlarmId'] = [
+        newConfig.ownshipFilterFlarmId,
+        verifiedConfig.ownshipFilterFlarmId
+      ];
+    }
+
+    final verified = mismatches.isEmpty;
+    final message = verified
+        ? 'Configuration applied and verified successfully'
+        : 'Configuration applied but verification detected ${mismatches.length} mismatch(es)';
+
     return ApplyResult(
       success: true,
-      verified: true,
+      verified: verified,
       verifiedConfig: verifiedConfig,
-      message: 'Configuration applied and verified successfully',
+      message: message,
+      mismatches: mismatches,
     );
   }
 
@@ -850,21 +954,21 @@ class SkyEchoValidation {
 
   /// Validates GPS antenna offset longitude.
   ///
-  /// Range: 0-31 meters, MUST be even (odd values truncated by device).
+  /// Range: 0-60 meters, MUST be even (odd values truncated by device).
   ///
   /// Throws [SkyEchoFieldError] if invalid.
   static void validateGpsLonOffset(int lonMeters) {
-    if (lonMeters < 0 || lonMeters > 31) {
+    if (lonMeters < 0 || lonMeters > 60) {
       throw SkyEchoFieldError(
-        'GPS lon offset out of range: $lonMeters meters (0-31)',
-        hint: 'Use value 0-31 meters',
+        'GPS lon offset out of range: $lonMeters meters (0-60)',
+        hint: 'Use value 0-60 meters',
       );
     }
 
     if (lonMeters % 2 != 0) {
       throw SkyEchoFieldError(
         'GPS lon offset must be even: $lonMeters meters',
-        hint: 'Device truncates odd values. Use even (0, 2, 4, ...30)',
+        hint: 'Device truncates odd values. Use even (0, 2, 4, ...60)',
       );
     }
   }
@@ -987,7 +1091,7 @@ class SetupConfig {
   /// GPS antenna latitude offset (0-7, from gpsAntennaOffset bits 5-7).
   final int gpsLatOffset;
 
-  /// GPS antenna longitude offset in meters (0-31, even only).
+  /// GPS antenna longitude offset in meters (0-60, even only).
   ///
   /// Unpacked from gpsAntennaOffset bits 0-4: (encoded - 1) × 2.
   final int gpsLonOffsetMeters;
@@ -1042,12 +1146,13 @@ class SetupConfig {
       final vfrSquawk = setup['vfrSquawk'] as int;
       final control = setup['control'] as int;
 
-      final filterIcaoInt = filter['icaoAddress'] as int;
+      final filterIcaoInt = filter['icaoAddress'] as int?;
       final filterFlarmId = filter['flarmId'] as int?;
 
       // Transform ICAO addresses
       final icaoHex = _intToHex(icaoInt);
-      final filterIcaoHex = _intToHex(filterIcaoInt);
+      final filterIcaoHex =
+          filterIcaoInt != null ? _intToHex(filterIcaoInt) : '';
 
       // Unpack adsbInCapability
       final adsbIn = _unpackAdsbInCapability(adsbInCapability);
@@ -1162,7 +1267,8 @@ class SetupConfig {
 
     // Convert ICAO addresses
     final icaoInt = _hexToInt(icaoAddress);
-    final filterIcaoInt = _hexToInt(ownshipFilterIcao);
+    final filterIcaoInt =
+        ownshipFilterIcao.isNotEmpty ? _hexToInt(ownshipFilterIcao) : null;
     final filterFlarmIdInt = ownshipFilterFlarmId != null
         ? _hexToInt(ownshipFilterFlarmId!)
         : null;
@@ -1326,6 +1432,7 @@ class ApplyResult {
     required this.verified,
     this.verifiedConfig,
     this.message,
+    this.mismatches = const {},
   });
 
   /// Whether POST request succeeded (200 OK).
@@ -1339,4 +1446,9 @@ class ApplyResult {
 
   /// Optional message providing additional context.
   final String? message;
+
+  /// Map of field mismatches (field name → [expected, actual]).
+  ///
+  /// Empty if verified is true, populated with discrepancies if false.
+  final Map<String, List<dynamic>> mismatches;
 }

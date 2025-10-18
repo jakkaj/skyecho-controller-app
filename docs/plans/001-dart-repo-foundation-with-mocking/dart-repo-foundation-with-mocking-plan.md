@@ -1316,7 +1316,7 @@ See [docs/how/skyecho-library/](docs/how/skyecho-library/) for detailed guides.
 - [x] Phase 2: Capture Real Device HTML Fixtures - COMPLETE (2025-10-17)
 - [x] Phase 3: Error Hierarchy & HTTP Infrastructure (TAD) - COMPLETE (2025-10-17)
 - [x] **Phase 4: JSON API - Device Status (TAD) - COMPLETE (2025-10-18)** [^4] [^5] [^6] [^7] [^8] [^9] [^10] [^11]
-- [x] **Phase 5: JSON API - Setup Configuration (TAD) - COMPLETE (2025-10-18)** [^12]
+- [x] **Phase 5: JSON API - Setup Configuration (TAD) - COMPLETE (2025-10-18)** [^12] [^12a]
 - [~] **Phase 6: Configuration Update Logic (TAD) - ⏭️ SKIPPED/OBSOLETE (JSON API in Phase 5 superseded HTML approach)** [^13]
 - [x] **Phase 7: Integration Test Framework - COMPLETE (2025-10-18)** [^14]
 - [x] **Phase 8: Example CLI Application - COMPLETE (2025-10-18)** [^15]
@@ -1466,6 +1466,28 @@ During implementation, footnote tags from task Notes will be added here with det
   - **Metrics**: 970 lines implementation + 1000 lines tests, 73.3% coverage (239/326 lines), 52 total unit tests passing
   - **Duration**: 2025-10-18 (~2 hours)
   - **Execution**: Modified TAD (skipped scratch phase like Phase 4), DELETE FIRST found codebase clean
+
+[^12a]: Phase 5 - Critical Bug Fixes F1-F3 (Code Review Findings)
+  - **Status**: ✅ COMPLETE - All 3 critical findings resolved
+  - **Finding F1 - POST Verification Logic**:
+    * Problem: applySetup() didn't compare verification GET, missed silent rejections
+    * Fix: Added field-by-field comparison logic (lib/skyecho.dart:444-553)
+    * Added: ApplyResult.mismatches field (lib/skyecho.dart:1435-1453)
+    * Test: F1 unit test simulating callsign truncation (test/unit/skyecho_client_test.dart:132-196)
+  - **Finding F2 - Nullable Ownship Filter**:
+    * Problem: fromJson() crashed on null filter (type cast error)
+    * Fix: Changed `as int` to `as int?` for nullable handling (lib/skyecho.dart:1149-1167)
+    * Added: Empty string to null conversion in toJson() (lib/skyecho.dart:1264-1267)
+    * Tests: 2 unit tests for fromJson/toJson null handling (test/unit/setup_config_test.dart:916-989)
+  - **Finding F3 - GPS Longitude Validation Range**:
+    * Problem: Validated 0-31 meters, device supports 0-60 meters
+    * Fix: Updated range to 0-60 meters, even-only requirement (lib/skyecho.dart:960-993)
+    * Updated: Comments and error messages for 0-60 range (lib/skyecho.dart:857-870)
+    * Test: Edge case unit test (60m valid, 31m/33m/62m invalid) (test/unit/setup_config_test.dart:886-914)
+  - **Test Impact**: 52 → 56 tests (+4 tests with Test Doc blocks)
+  - **Quality**: dart analyze clean, all tests passing, >70% coverage maintained
+  - **Evidence**: See tasks/phase-5-json-api-setup-configuration/fixes-f1-f3-execution.log.md
+  - **Duration**: 2025-10-18 (~1 hour)
 
 [^13]: Phase 6 - Configuration Update Logic (SKIPPED/OBSOLETE)
   - **Status**: ⏭️ SKIPPED - All objectives achieved via JSON API in Phase 5

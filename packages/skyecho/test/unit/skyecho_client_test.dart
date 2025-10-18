@@ -1,6 +1,8 @@
 // Unit tests for SkyEchoClient
 // Promoted from scratch tests with Test Doc blocks
 
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:skyecho/skyecho.dart';
@@ -125,6 +127,74 @@ void main() {
 
       // Assert
       expect(client.timeout, const Duration(seconds: 10));
+    });
+
+    test('F1: applySetup detects mismatches between POST and verification GET',
+        () async {
+      /*
+      Test Doc:
+      - Why: Critical safety - validates POST verification detects silent device rejections
+      - Contract: applySetup() compares newConfig vs verifiedConfig, sets verified=false on mismatch
+      - Usage Notes: Device may silently truncate callsign "N12345" → "N1234" or reject other fields
+      - Quality Contribution: Prevents silent data corruption; surfaces config rejection to caller
+      - Worked Example: POST callsign="TOOLONG" → GET returns callsign="TOOLON" → verified=false, mismatches={'callsign': ['TOOLONG', 'TOOLON']}
+      */
+
+      // Arrange - Sample config JSON
+      final sampleConfigJson = {
+        'setup': {
+          'icaoAddress': 8177049,
+          'callsign': 'TEST',
+          'emitterCategory': 1,
+          'adsbInCapability': 1,
+          'aircraftLengthWidth': 1,
+          'gpsAntennaOffset': 128,
+          'SIL': 1,
+          'SDA': 1,
+          'stallSpeed': 23148,
+          'vfrSquawk': 1200,
+          'control': 1,
+        },
+        'ownshipFilter': {'icaoAddress': 8177049, 'flarmId': null},
+      };
+
+      final mockClient = MockClient((request) async {
+        if (request.method == 'GET' && request.url.path.contains('get')) {
+          // First GET: return original config
+          return http.Response(
+            json.encode(sampleConfigJson),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        } else if (request.method == 'POST') {
+          // POST: accept the update
+          return http.Response('OK', 200);
+        } else if (request.method == 'GET') {
+          // Verification GET: return modified config (device truncated callsign)
+          final modifiedJson = Map<String, dynamic>.from(sampleConfigJson);
+          modifiedJson['setup'] = Map<String, dynamic>.from(
+              modifiedJson['setup'] as Map<String, dynamic>)
+            ..['callsign'] = 'TOOLON'; // Truncated!
+          return http.Response(
+            json.encode(modifiedJson),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response('Not Found', 404);
+      });
+
+      final client = SkyEchoClient('http://test', httpClient: mockClient);
+
+      // Act - Try to set callsign to "TOOLONG"
+      final result = await client.applySetup((u) => u..callsign = 'TOOLONG');
+
+      // Assert
+      expect(result.success, isTrue); // POST succeeded
+      expect(result.verified, isFalse); // But verification detected mismatch
+      expect(result.mismatches, isNotEmpty);
+      expect(result.mismatches, containsPair('callsign', ['TOOLONG', 'TOOLON']));
+      expect(result.message, contains('mismatch'));
     });
   });
 }

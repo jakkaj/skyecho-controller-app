@@ -881,6 +881,113 @@ void main() {
       expect(ReceiverMode.values, contains(ReceiverMode.flarm));
     });
   });
+
+  group('Bug Fixes (Review F1-F3)', () {
+    test('F3: GPS longitude validation accepts 0-60 meters (even)', () {
+      /*
+      Test Doc:
+      - Why: Validates GPS longitude offset range expansion from 0-31 to 0-60 meters
+      - Contract: SkyEchoValidation.validateGpsLonOffset accepts 0-60 (even), rejects >60 or odd
+      - Usage Notes: Device accepts full 0-60m range, not just 0-31m as originally coded
+      - Quality Contribution: Prevents false rejections of valid 32-60m offsets
+      - Worked Example: 60m (valid), 31m (valid), 33m (invalid - odd), 62m (invalid - exceeds range)
+      */
+
+      // Arrange & Act & Assert - Valid values
+      expect(() => SkyEchoValidation.validateGpsLonOffset(0), returnsNormally);
+      expect(
+          () => SkyEchoValidation.validateGpsLonOffset(30), returnsNormally);
+      expect(
+          () => SkyEchoValidation.validateGpsLonOffset(60), returnsNormally);
+
+      // Assert - Invalid values (odd)
+      expect(() => SkyEchoValidation.validateGpsLonOffset(31),
+          throwsA(isA<SkyEchoFieldError>()));
+      expect(() => SkyEchoValidation.validateGpsLonOffset(33),
+          throwsA(isA<SkyEchoFieldError>()));
+
+      // Assert - Invalid values (exceeds range)
+      expect(() => SkyEchoValidation.validateGpsLonOffset(62),
+          throwsA(isA<SkyEchoFieldError>()));
+      expect(() => SkyEchoValidation.validateGpsLonOffset(100),
+          throwsA(isA<SkyEchoFieldError>()));
+    });
+
+    test('F2: fromJson handles nullable ownship filter ICAO address', () {
+      /*
+      Test Doc:
+      - Why: Validates ownship filter parsing when filter is disabled (null values)
+      - Contract: SetupConfig.fromJson handles null icaoAddress in ownshipFilter gracefully
+      - Usage Notes: Device returns null when ownship filtering is disabled, not 0
+      - Quality Contribution: Prevents runtime type errors when fetching config with disabled filter
+      - Worked Example: ownshipFilter: {icaoAddress: null, flarmId: null} → ownshipFilterIcao: ''
+      */
+
+      // Arrange - JSON with null ownship filter
+      final json = {
+        'setup': {
+          'icaoAddress': 8177049,
+          'callsign': 'TEST',
+          'emitterCategory': 1,
+          'adsbInCapability': 1,
+          'aircraftLengthWidth': 1,
+          'gpsAntennaOffset': 128,
+          'SIL': 1,
+          'SDA': 1,
+          'stallSpeed': 23148,
+          'vfrSquawk': 1200,
+          'control': 1,
+        },
+        'ownshipFilter': {'icaoAddress': null, 'flarmId': null},
+      };
+
+      // Act
+      final config = SetupConfig.fromJson(json);
+
+      // Assert
+      expect(config.ownshipFilterIcao, '');
+      expect(config.ownshipFilterFlarmId, isNull);
+    });
+
+    test('F2: toJson converts empty ownship filter ICAO to null', () {
+      /*
+      Test Doc:
+      - Why: Validates symmetric serialization of disabled ownship filter
+      - Contract: SetupConfig.toJson converts empty ownshipFilterIcao to null in JSON
+      - Usage Notes: Ensures fromJson → toJson roundtrip preserves null semantics
+      - Quality Contribution: Maintains data integrity when posting configs with disabled filters
+      - Worked Example: ownshipFilterIcao: '' → JSON ownshipFilter.icaoAddress: null
+      */
+
+      // Arrange
+      final config = SetupConfig(
+        icaoAddress: '7CC599',
+        callsign: 'TEST',
+        emitterCategory: 1,
+        uatEnabled: true,
+        es1090Enabled: false,
+        es1090TransmitEnabled: false,
+        receiverMode: ReceiverMode.uat,
+        aircraftLength: 0,
+        aircraftWidth: 1,
+        gpsLatOffset: 4,
+        gpsLonOffsetMeters: 0,
+        sil: 1,
+        sda: 1,
+        stallSpeedKnots: 45.0,
+        vfrSquawk: 1200,
+        ownshipFilterIcao: '', // Empty = disabled
+        ownshipFilterFlarmId: null,
+      );
+
+      // Act
+      final json = config.toJson();
+
+      // Assert
+      expect(json['ownshipFilter']['icaoAddress'], isNull);
+      expect(json['ownshipFilter']['flarmId'], isNull);
+    });
+  });
 }
 
 /// Helper to access private _hexToInt for testing.

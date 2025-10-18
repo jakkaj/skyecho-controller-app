@@ -681,4 +681,54 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ---
 
+## Task 8.10: Document example usage in README.md
+
+**Plan Reference**: [Phase 8: Example CLI Application](../../dart-repo-foundation-with-mocking-plan.md#phase-8-example-cli-application)
+**Task Table Entry**: [View Task 8.10 in Plan](../../dart-repo-foundation-with-mocking-plan.md#tasks-lightweight)
+**Status**: Completed
+**Completed**: 2025-10-18
+**Developer**: AI Agent
+
+### Changes Made:
+1. Created comprehensive README.md at repository root [^15]
+   - `file:README.md` - Complete README with features, installation, quick start, examples
+   - `function:packages/skyecho/example/main.dart:cmdConfig` - Added config command for displaying device configuration
+   - `method:packages/skyecho/lib/skyecho.dart:SkyEchoClient._resetConnection` - Critical HTTP keep-alive bug fix
+   - `file:packages/skyecho/lib/skyecho.dart` - Updated library with connection reset logic
+   - `file:justfile` - Added example CLI commands (example-config, example-ping, example-status, example-configure, example-all)
+
+### Implementation Notes:
+- README.md includes 10 major sections covering all aspects of library usage
+- All example commands are copy-paste ready with expected outputs
+- Documentation based on actual test runs from T008
+- Added cmdConfig() function to display all device configuration settings
+- **CRITICAL BUG FIX**: Device firmware closes TCP connections on ANY second request made on a reused connection
+  - Solution: Call _resetConnection() before every HTTP request (ping, fetchStatus, fetchSetupConfig, _postJson)
+  - This ensures fresh connections by closing and reopening the client
+  - Fixed integration tests that were failing due to keep-alive issues
+
+### Test Results:
+```bash
+$ just test
+Running 56 tests (52 unit + 3 integration + 1 skipped)
+All tests passing ✅
+```
+
+### Phase Completion Summary:
+- All 10 tasks (T001-T010) completed successfully
+- Complete CLI with 4 commands: ping, status, config, configure
+- Comprehensive README with examples, safety notes, and documentation
+- HTTP keep-alive bug discovered and fixed
+- 56 tests passing (52 unit + 3 integration + 1 skipped)
+- Integration tests that were failing now pass
+
+### Blockers/Issues:
+None
+
+### Next Steps:
+- Phase 9: Documentation (Hybrid)
+- Phase 10: Final Polish & Validation
+
+---
+
 **END OF EXECUTION LOG**

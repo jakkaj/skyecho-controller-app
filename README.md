@@ -213,7 +213,12 @@ Tests will skip gracefully if the device is not available.
 ## Documentation
 
 - **Quick Start**: This README
-- **Detailed Guides**: `docs/how/skyecho-library/` (coming in Phase 9)
+- **Detailed Guides**: `docs/how/skyecho-library/`
+  - [Getting Started](docs/how/skyecho-library/getting-started.md) - Installation, first script, basic usage
+  - [Error Handling](docs/how/skyecho-library/error-handling.md) - Error types, recovery patterns, best practices
+  - [Testing Guide](docs/how/skyecho-library/testing-guide.md) - How to write tests, TAD approach, mocking
+  - [Device Setup](docs/how/skyecho-library/device-setup.md) - Physical device setup for integration tests
+  - [Troubleshooting](docs/how/skyecho-library/troubleshooting.md) - Common issues, solutions, FAQ
 - **API Reference**: Dartdoc comments in source code
 
 ## Project Structure

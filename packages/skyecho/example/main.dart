@@ -149,9 +149,10 @@ Future<void> cmdConfig(SkyEchoClient client) async {
   print('  SIL:                 ${config.sil}');
   print('  SDA:                 ${config.sda}');
   print('');
-  if (config.ownshipFilterIcao != null || config.ownshipFilterFlarmId != null) {
+  if (config.ownshipFilterIcao.isNotEmpty ||
+      config.ownshipFilterFlarmId != null) {
     print('Ownship Filter:');
-    if (config.ownshipFilterIcao != null) {
+    if (config.ownshipFilterIcao.isNotEmpty) {
       print('  ICAO Address:        ${config.ownshipFilterIcao}');
     }
     if (config.ownshipFilterFlarmId != null) {

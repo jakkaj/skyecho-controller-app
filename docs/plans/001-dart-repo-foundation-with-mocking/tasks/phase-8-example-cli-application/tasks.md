@@ -22,7 +22,7 @@
 | [ ] | T007 | Add error handling for all commands (catch SkyEchoError) | Core | T004, T005, T006 | /Users/jordanknight/github/skyecho-controller-app/packages/skyecho/example/main.dart | All commands wrapped in try-catch, SkyEchoError exceptions caught, error.toString() displays message + hint | Serial (same file); maps to plan task 8.7 |
 | [ ] | T008 | Manual test example app with real device at 192.168.4.1 | Integration | T007 | /Users/jordanknight/github/skyecho-controller-app/packages/skyecho/example/main.dart | All commands tested (ping, status, configure), outputs documented in execution log | Maps to plan task 8.8; requires physical device connection |
 | [ ] | T009 | Manual test example app without device (verify graceful errors) | Integration | T007 | /Users/jordanknight/github/skyecho-controller-app/packages/skyecho/example/main.dart | All commands tested when device unavailable, error messages are helpful with actionable hints | [P] eligible (independent of T008); maps to plan task 8.9 |
-| [ ] | T010 | Document example usage in README.md with copy-paste commands | Doc | T008, T009 | /Users/jordanknight/github/skyecho-controller-app/README.md | README has "Example Usage" section with ping, status, configure examples and expected outputs; note that examples will need re-validation in Phase 10 if output formats change | [P] eligible (different file); maps to plan task 8.10; examples captured from T008/T009 outputs |
+| [x] | T010 | Document example usage in README.md with copy-paste commands | Doc | T008, T009 | /Users/jordanknight/github/skyecho-controller-app/README.md | README has "Example Usage" section with ping, status, configure examples and expected outputs; note that examples will need re-validation in Phase 10 if output formats change | [P] eligible (different file); maps to plan task 8.10; examples captured from T008/T009 outputs · log#task-810-document-example-usage-in-readmemd [^15] |
 
 ---
 
@@ -676,14 +676,12 @@ dart analyze
 
 ## Phase Footnote Stubs
 
-**Note**: This section will be populated during `/plan-6-implement-phase` execution. Footnote tags (e.g., `[^N]`) will be added to the plan's Change Footnotes Ledger post-implementation to document:
-
-- Code changes made (classes, functions, files created)
-- Implementation decisions and rationale
-- Deviations from plan (if any)
-- Traceability between tasks and code artifacts
-
-**Do not create footnote entries during planning phase.**
+[^15]: Task 8.10 - Complete CLI Example Application with Documentation
+  - `file:README.md` - Comprehensive README (259 lines) with features, installation, quick start, examples, safety notes
+  - `function:packages/skyecho/example/main.dart:cmdConfig` - Display all device configuration settings
+  - `method:packages/skyecho/lib/skyecho.dart:SkyEchoClient._resetConnection` - Critical HTTP keep-alive bug fix
+  - `file:packages/skyecho/lib/skyecho.dart` - Updated library with connection reset before all HTTP requests
+  - `file:justfile` - Added example CLI commands (example-config, example-ping, example-status, example-configure, example-all)
 
 ---
 

@@ -129,7 +129,8 @@ class SkyEchoClient {
     this.baseUrl, {
     http.Client? httpClient,
     this.timeout = const Duration(seconds: 5),
-  }) : _httpClient = httpClient ?? http.Client();
+  })  : _httpClient = httpClient ?? http.Client(),
+        _externalClient = httpClient != null;
 
   /// Base URL of the SkyEcho device (e.g., `http://192.168.4.1`).
   final String baseUrl;
@@ -137,8 +138,25 @@ class SkyEchoClient {
   /// HTTP timeout for requests.
   final Duration timeout;
 
-  final http.Client _httpClient;
+  http.Client _httpClient;
   final _CookieJar _cookieJar = _CookieJar();
+
+  /// Tracks if HTTP client was provided externally (for testing).
+  final bool _externalClient;
+
+  /// Resets HTTP connection to work around SkyEcho device keep-alive bug.
+  ///
+  /// The device firmware has a bug where it closes connections on ANY request
+  /// made on a reused HTTP connection (keep-alive). This method closes and
+  /// reopens the connection before each request.
+  ///
+  /// For external clients (tests with MockClient), this is a no-op.
+  void _resetConnection() {
+    if (!_externalClient) {
+      _httpClient.close();
+      _httpClient = http.Client();
+    }
+  }
 
   /// Pings the device to verify connectivity.
   ///
@@ -149,6 +167,9 @@ class SkyEchoClient {
   /// Throws [SkyEchoHttpError] on non-200 status codes.
   Future<void> ping() async {
     try {
+      // WORKAROUND: Reset connection before request (device keep-alive bug)
+      _resetConnection();
+
       final uri = Uri.parse('$baseUrl/');
       final headers = <String, String>{};
 
@@ -194,6 +215,9 @@ class SkyEchoClient {
   /// Throws [SkyEchoParseError] on JSON parsing failures.
   Future<DeviceStatus> fetchStatus() async {
     try {
+      // WORKAROUND: Reset connection before request (device keep-alive bug)
+      _resetConnection();
+
       final uri = Uri.parse('$baseUrl/?action=get');
       final headers = <String, String>{};
 
@@ -248,6 +272,9 @@ class SkyEchoClient {
   /// Throws [SkyEchoParseError] on JSON parsing failures.
   Future<SetupConfig> fetchSetupConfig() async {
     try {
+      // WORKAROUND: Reset connection before request (device keep-alive bug)
+      _resetConnection();
+
       final uri = Uri.parse('$baseUrl/setup/?action=get');
       final headers = <String, String>{};
 
@@ -297,10 +324,16 @@ class SkyEchoClient {
   /// Internal helper for JSON POST requests with cookie management.
   /// Returns HTTP response.
   ///
+  /// **Workaround:** Resets HTTP connection before POST to avoid device
+  /// keep-alive bug (device closes connection on reused connections).
+  ///
   /// Throws [SkyEchoNetworkError] on network failures.
   /// Throws [SkyEchoHttpError] on non-200 status codes.
   Future<http.Response> _postJson(String path, Map<String, dynamic> json) async {
     try {
+      // WORKAROUND: Reset connection before request (device keep-alive bug)
+      _resetConnection();
+
       final uri = Uri.parse('$baseUrl$path');
       final headers = <String, String>{
         'content-type': 'application/json',

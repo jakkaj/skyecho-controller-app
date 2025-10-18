@@ -75,3 +75,32 @@ clean:
     rm -rf packages/skyecho/.dart_tool
     rm -rf packages/skyecho/build
     rm -f packages/skyecho/pubspec.lock
+
+# === Example CLI Commands ===
+
+# Show CLI help
+example-help:
+    cd packages/skyecho && dart run example/main.dart --help
+
+# Ping the device (check connectivity)
+example-ping:
+    cd packages/skyecho && dart run example/main.dart ping
+
+# Get device status
+example-status:
+    cd packages/skyecho && dart run example/main.dart status
+
+# Get device configuration (all settings)
+example-config:
+    cd packages/skyecho && dart run example/main.dart config
+
+# Demonstrate configuration update (safe example)
+example-configure:
+    cd packages/skyecho && dart run example/main.dart configure
+
+# Ping with custom URL
+example-ping-url URL='http://192.168.4.1':
+    cd packages/skyecho && dart run example/main.dart --url {{URL}} ping
+
+# Run all example commands in sequence
+example-all: example-ping example-status example-config example-configure

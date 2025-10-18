@@ -1,5 +1,6 @@
 import 'package:skyecho/skyecho.dart';
 import 'package:test/test.dart';
+import 'helpers.dart';
 
 void main() {
   group('DeviceStatus integration with real device', () {
@@ -7,14 +8,9 @@ void main() {
 
     setUpAll(() async {
       // Check if device is accessible
-      try {
-        final client = SkyEchoClient('http://192.168.4.1');
-        await client.ping();
-        deviceAvailable = true;
-      } catch (e) {
-        deviceAvailable = false;
-        print('⚠️  SkyEcho device not reachable at http://192.168.4.1');
-        print('   Connect to SkyEcho WiFi network to run integration tests.');
+      deviceAvailable = await canReachDevice('http://192.168.4.1');
+      if (deviceAvailable != true) {
+        print(deviceSetupMessage());
       }
     });
 
@@ -54,13 +50,7 @@ void main() {
           reason: 'Coredump flag should be boolean');
 
       // Log the actual values for debugging
-      print('✅ Successfully fetched status from real device:');
-      print('   WiFi Version: ${status.wifiVersion}');
-      print('   SSID: ${status.ssid}');
-      print('   ADS-B Version: ${status.adsbVersion}');
-      print('   Serial Number: ${status.serialNumber}');
-      print('   Clients: ${status.clientsConnected}');
-      print('   Coredump: ${status.coredump}');
+      printDeviceInfo(status);
     });
 
     test('given_real_device_when_checking_computed_properties_then_values_are_sensible',

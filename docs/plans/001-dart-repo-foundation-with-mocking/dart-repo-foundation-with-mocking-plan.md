@@ -829,29 +829,7 @@ void main() {
 
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
-| 6.1 | [ ] | Write scratch probes for SetupUpdate builder pattern | 5-8 probes testing cascade operator syntax | - | Test fluent API ergonomics |
-| 6.2 | [ ] | Write scratch probes for fuzzy label matching | 10-15 probes for exact, contains, normalized matching | - | Per Discovery 03 |
-| 6.3 | [ ] | Write scratch probes for field cloning and update | 8-10 probes ensuring original form not mutated | - | Per Discovery 05 (immutability) |
-| 6.4 | [ ] | Write scratch probes for _setFirst, _setNth helpers | 5-8 probes for index errors, type mismatches | - | Edge cases for helper methods |
-| 6.5 | [ ] | Write scratch probes for _setSelect, _setRadio helpers | 8-10 probes for option validation, error messages | - | Test actionable hints |
-| 6.6 | [ ] | Implement SetupUpdate class | All typed fields (icaoHex, callsign, etc.), rawByFieldName map | - | Per initial-details.md lines 704-734 |
-| 6.7 | [ ] | Implement ReceiverMode enum | With display and wireValue fields per initial-details.md lines 737-745 | - | Example of domain enum |
-| 6.8 | [ ] | Implement FormPost class | Simple data class with target and data fields | - | Per initial-details.md lines 688-692 |
-| 6.9 | [ ] | Implement SetupForm.asPost() | Returns FormPost with current field values encoded | - | Per initial-details.md lines 429-435 |
-| 6.10 | [ ] | Implement SetupForm.updatedWith() - cloning | Clone all fields using copy() method | - | Per initial-details.md lines 438-440 |
-| 6.11 | [ ] | Implement SetupForm.updatedWith() - label indexing | Build byLabel map using _normLabel for fuzzy matching | - | Per initial-details.md lines 442-459 |
-| 6.12 | [ ] | Implement SetupForm.updatedWith() - field updates | Apply all typed field updates per initial-details.md lines 461-493 | - | Use helper methods |
-| 6.13 | [ ] | Implement SetupForm.updatedWith() - raw overrides | Apply rawByFieldName overrides per initial-details.md lines 495-513 | - | Escape hatch |
-| 6.14 | [ ] | Implement _setFirst, _setNth, _setSelect, _setRadio helpers | Per initial-details.md lines 519-574 with SkyEchoFieldError on failure | - | Include actionable hints |
-| 6.15 | [ ] | Implement SkyEchoClient.fetchSetupForm() | GET /setup, parse, throw SkyEchoParseError if null | - | Per initial-details.md lines 72-85 |
-| 6.16 | [ ] | Implement SkyEchoClient.applySetup() | Fetch form, apply update, submit POST | - | Per initial-details.md lines 87-113 |
-| 6.17 | [ ] | Implement SkyEchoClient.clickApply() | Fetch form, submit as-is | - | Per initial-details.md lines 115-128 |
-| 6.18 | [ ] | Implement ApplyResult class | Simple success wrapper | - | Per initial-details.md lines 695-698 |
-| 6.19 | [ ] | Promote fuzzy matching tests to packages/skyecho/test/unit/setup_update_test.dart | 3-4 tests with Test Docs for normalization, contains matching | - | Critical for robustness |
-| 6.20 | [ ] | Promote field update tests to packages/skyecho/test/unit/setup_update_test.dart | 5-6 tests with Test Docs covering all update types | - | Critical path |
-| 6.21 | [ ] | Promote error handling tests to packages/skyecho/test/unit/setup_update_test.dart | 3-4 tests with Test Docs for field not found, bad values | - | Verify actionable hints |
-| 6.22 | [ ] | Promote integration tests to packages/skyecho/test/unit/skyecho_client_test.dart | 2-3 tests with Test Docs for applySetup() with MockClient | - | End-to-end unit test |
-| 6.23 | [ ] | Delete non-valuable scratch tests | Clean up packages/skyecho/test/scratch/ | - | |
+| 6.1-6.23 | [~] | **ALL PHASE 6 TASKS - OBSOLETE** | N/A - Phase superseded by Phase 5 JSON API | [📋](tasks/phase-6-configuration-update-logic/tasks.md) | ⏭️ OBSOLETE - JSON API in Phase 5 superseded HTML approach · [^13] |
 
 #### Test Examples (Promoted Tests)
 
@@ -896,13 +874,13 @@ void main() {
 ```
 
 #### Acceptance Criteria
-- [ ] SetupUpdate builder pattern works with cascade operator
-- [ ] Fuzzy label matching handles whitespace, case differences
-- [ ] Field cloning prevents original form mutation
-- [ ] All helper methods throw SkyEchoFieldError with actionable hints
-- [ ] SkyEchoClient.applySetup() works with MockClient
-- [ ] At least 13-17 promoted tests with Test Doc blocks
-- [ ] All promoted tests pass
+- [~] SetupUpdate builder pattern works with cascade operator - ⏭️ OBSOLETE (JSON API in Phase 5 superseded HTML approach)
+- [~] Fuzzy label matching handles whitespace, case differences - ⏭️ OBSOLETE (JSON API in Phase 5 superseded HTML approach)
+- [~] Field cloning prevents original form mutation - ⏭️ OBSOLETE (JSON API in Phase 5 superseded HTML approach)
+- [~] All helper methods throw SkyEchoFieldError with actionable hints - ⏭️ OBSOLETE (JSON API in Phase 5 superseded HTML approach)
+- [~] SkyEchoClient.applySetup() works with MockClient - ⏭️ OBSOLETE (JSON API in Phase 5 superseded HTML approach)
+- [~] At least 13-17 promoted tests with Test Doc blocks - ⏭️ OBSOLETE (JSON API in Phase 5 superseded HTML approach)
+- [~] All promoted tests pass - ⏭️ OBSOLETE (JSON API in Phase 5 superseded HTML approach)
 
 ---
 
@@ -1338,13 +1316,13 @@ See [docs/how/skyecho-library/](docs/how/skyecho-library/) for detailed guides.
 - [x] Phase 3: Error Hierarchy & HTTP Infrastructure (TAD) - COMPLETE (2025-10-17)
 - [x] **Phase 4: JSON API - Device Status (TAD) - COMPLETE (2025-10-18)** [^4] [^5] [^6] [^7] [^8] [^9] [^10] [^11]
 - [x] **Phase 5: JSON API - Setup Configuration (TAD) - COMPLETE (2025-10-18)** [^12]
-- [ ] Phase 6: Configuration Update Logic (TAD) - PENDING
+- [~] **Phase 6: Configuration Update Logic (TAD) - ⏭️ SKIPPED/OBSOLETE (JSON API in Phase 5 superseded HTML approach)** [^13]
 - [ ] Phase 7: Integration Test Framework - PENDING
 - [ ] Phase 8: Example CLI Application - PENDING
 - [ ] Phase 9: Documentation (Hybrid) - PENDING
 - [ ] Phase 10: Final Polish & Validation - PENDING
 
-**Overall Progress**: 5/10 phases (50%)
+**Overall Progress**: 5/10 phases complete (50%), 1 phase skipped
 
 ### STOP Rule
 
@@ -1485,3 +1463,16 @@ During implementation, footnote tags from task Notes will be added here with det
   - **Metrics**: 970 lines implementation + 1000 lines tests, 73.3% coverage (239/326 lines), 52 total unit tests passing
   - **Duration**: 2025-10-18 (~2 hours)
   - **Execution**: Modified TAD (skipped scratch phase like Phase 4), DELETE FIRST found codebase clean
+
+[^13]: Phase 6 - Configuration Update Logic (SKIPPED/OBSOLETE)
+  - **Status**: ⏭️ SKIPPED - All objectives achieved via JSON API in Phase 5
+  - **Original Plan**: HTML form parsing, fuzzy label matching, SetupForm.updatedWith(), clickApply()
+  - **Discovery**: SkyEcho provides JSON API endpoints (GET/POST /setup/?action=get|set)
+  - **Phase 5 Delivered Instead**:
+    * JSON-based SetupUpdate builder (line 1232 in lib/skyecho.dart)
+    * JSON-based applySetup() with verification (line 367 in lib/skyecho.dart)
+    * All transformation logic (hex, bit-packing, unit conversion)
+    * 32 unit tests + 3 integration tests
+    * No SetupForm class needed (HTML parsing unnecessary)
+  - **Evidence**: See tasks/phase-6-configuration-update-logic/tasks.md for full explanation
+  - **Date**: 2025-10-18

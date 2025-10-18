@@ -1,5 +1,6 @@
 import 'package:skyecho/skyecho.dart';
 import 'package:test/test.dart';
+import 'helpers.dart';
 
 /// Integration tests for SetupConfig API with real SkyEcho device.
 ///
@@ -7,12 +8,24 @@ import 'package:test/test.dart';
 void main() {
   group('SetupConfig Integration Tests (Real Device)', () {
     late SkyEchoClient client;
+    bool? deviceAvailable;
+
+    setUpAll(() async {
+      // Check if device is accessible
+      deviceAvailable = await canReachDevice('http://192.168.4.1');
+      if (deviceAvailable != true) {
+        print(deviceSetupMessage());
+      }
+    });
 
     setUp(() {
       client = SkyEchoClient('http://192.168.4.1');
     });
 
     test('fetches setup configuration from real device', () async {
+      if (deviceAvailable != true) {
+        markTestSkipped('Device not available at http://192.168.4.1');
+      }
       /*
       Test Doc:
       - Why: Verify fetchSetupConfig works with real device JSON response
@@ -33,14 +46,13 @@ void main() {
       expect(config.stallSpeedKnots, greaterThanOrEqualTo(0));
 
       // Print for manual verification
-      print('Fetched config from device:');
-      print('  ICAO: ${config.icaoAddress}');
-      print('  Callsign: ${config.callsign}');
-      print('  Receiver Mode: ${config.receiverMode}');
-      print('  Stall Speed: ${config.stallSpeedKnots} knots');
+      printDeviceInfo(config);
     }, timeout: const Timeout(Duration(seconds: 10)));
 
     test('applies setup configuration and verifies roundtrip', () async {
+      if (deviceAvailable != true) {
+        markTestSkipped('Device not available at http://192.168.4.1');
+      }
       /*
       Test Doc:
       - Why: Verify applySetup POST → wait → GET verification cycle
@@ -70,6 +82,10 @@ void main() {
       expect(result.verified, true);
       expect(result.verifiedConfig, isNotNull);
       expect(result.verifiedConfig!.callsign, newCallsign);
+
+      // SAFETY CRITICAL: Verify ADS-B transmission remains disabled
+      expect(result.verifiedConfig!.es1090TransmitEnabled, isFalse,
+          reason: 'SAFETY: 1090ES transmit must remain disabled in integration tests');
 
       print('ApplyResult: ${result.message}');
 

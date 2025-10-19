@@ -2001,7 +2001,7 @@ test('parse real heartbeat from captured fixture', () {
 - [x] Phase 2: CRC Validation Foundation - COMPLETE
 - [x] Phase 3: Byte Framing & Escaping - COMPLETE
 - [x] Phase 4: Message Routing & Parser Core - COMPLETE (100%)
-- [ ] Phase 5: Core Message Types (Heartbeat, Initialization) - NOT STARTED
+- [x] Phase 5: Core Message Types (Heartbeat, Initialization) - ✅ COMPLETE
 - [ ] Phase 6: Position Messages (Ownship, Traffic) - NOT STARTED
 - [ ] Phase 7: Additional Messages (HAT, Uplink, Geo Altitude, Pass-Through) - NOT STARTED
 - [ ] Phase 8: Stream Transport Layer - NOT STARTED
@@ -2088,6 +2088,27 @@ During implementation, footnote tags from task Notes are added here with details
 
 [^12]: Task 4.9 (T016) - Updated library exports
   - `file:lib/skyecho_gdl90.dart`
+
+### Phase 5: Core Message Types (Heartbeat, Initialization)
+
+[^13]: Task 5.1 (T001) - Added 8 heartbeat status fields to Gdl90Message
+  - `class:packages/skyecho_gdl90/lib/src/models/gdl90_message.dart:Gdl90Message`
+  - Fields: `maintRequired`, `identActive`, `ownshipAnonAddr`, `batteryLow`, `ratcs`, `uatInitialized`, `csaRequested`, `csaNotAvailable`
+
+[^14]: Task 5.9-5.16 (T009-T016) - Implemented heartbeat and initialization parsers
+  - `method:packages/skyecho_gdl90/lib/src/parser.dart:Gdl90Parser._parseHeartbeat`
+  - `method:packages/skyecho_gdl90/lib/src/parser.dart:Gdl90Parser._parseInitialization`
+  - Full field extraction: 10 boolean flags, 17-bit timestamp, message counts
+  - Initialization: 18-byte payload validation with audio fields
+
+[^15]: Task 5.2-5.8 (T002-T008) - Comprehensive Phase 5 test suite (7 tests)
+  - `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_status1_bit7_when_parsing_then_extracts_gpsPosValid`
+  - `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_status2_bit0_when_parsing_then_extracts_utcOk`
+  - `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_timestamp_when_parsing_then_extracts_timeOfDay`
+  - `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_counts_when_parsing_then_extracts_uplinkAndBasic`
+  - `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_all_status_flags_when_parsing_then_extracts_all_10_flags`
+  - `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_boundary_timestamps_when_parsing_then_handles_0_and_max`
+  - `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_initialization_message_when_parsing_then_stores_audio_fields`
 
 ---
 

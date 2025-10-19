@@ -64,10 +64,43 @@ class Gdl90Message {
   final int messageId;
 
   // Heartbeat fields (ID 0x00)
+  /// Status byte 1, bit 7: GPS position is valid
   final bool? gpsPosValid;
+
+  /// Status byte 1, bit 6: Maintenance required
+  final bool? maintRequired;
+
+  /// Status byte 1, bit 5: Ident switch active
+  final bool? identActive;
+
+  /// Status byte 1, bit 4: Address type talkback (ownship anonymous address)
+  final bool? ownshipAnonAddr;
+
+  /// Status byte 1, bit 3: GPS battery low
+  final bool? batteryLow;
+
+  /// Status byte 1, bit 2: RATCS (ATC Services talkback)
+  final bool? ratcs;
+
+  /// Status byte 1, bit 0: UAT initialized
+  final bool? uatInitialized;
+
+  /// Status byte 2, bit 6: CSA requested
+  final bool? csaRequested;
+
+  /// Status byte 2, bit 5: CSA not available
+  final bool? csaNotAvailable;
+
+  /// Status byte 2, bit 0: UTC timing is valid
   final bool? utcOk;
+
+  /// 17-bit time of day in seconds since 0000Z
   final int? timeOfDaySeconds;
+
+  /// 5-bit uplink message count
   final int? messageCountUplink;
+
+  /// 10-bit basic and long message count
   final int? messageCountBasicAndLong;
 
   // Traffic/Ownship fields (ID 0x14, 0x0A)
@@ -97,6 +130,14 @@ class Gdl90Message {
     required this.messageId,
     // Heartbeat
     this.gpsPosValid,
+    this.maintRequired,
+    this.identActive,
+    this.ownshipAnonAddr,
+    this.batteryLow,
+    this.ratcs,
+    this.uatInitialized,
+    this.csaRequested,
+    this.csaNotAvailable,
     this.utcOk,
     this.timeOfDaySeconds,
     this.messageCountUplink,

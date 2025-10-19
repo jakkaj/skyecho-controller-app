@@ -4,7 +4,7 @@
 **Plan**: [GDL90 Receiver & Parser Plan](../../gdl90-receiver-parser-plan.md)
 **Spec**: [GDL90 Receiver & Parser Spec](../../gdl90-receiver-parser-spec.md)
 **Created**: 2025-10-19
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
 
 ---
 
@@ -12,26 +12,26 @@
 
 | Status | ID | Task | Type | Dependencies | Absolute Path(s) | Validation | Notes |
 |--------|----|----|------|--------------|------------------|------------|-------|
-| [ ] | T001 | Write test for heartbeat GPS position valid flag extraction (RED) | Test | – | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with expected assertion on `gpsPosValid` field | Status byte 1 bit 7 (0x80) |
-| [ ] | T002 | Write test for heartbeat UTC validity flag extraction (RED) | Test | – | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with expected assertion on `utcOk` field | Status byte 2 bit 0 (0x01) |
-| [ ] | T003 | Write test for heartbeat 17-bit timestamp extraction (RED) | Test | – | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with expected assertion on `timeOfDaySeconds` field | 3-byte field: status2 bit 7 + 2 timestamp bytes |
-| [ ] | T004 | Write test for heartbeat message count extraction (RED) | Test | – | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with expected assertion on uplink/basic counts | 5-bit + 10-bit fields |
-| [ ] | T005 | Write test for all heartbeat status flags (7 flags) (RED) | Test | – | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS validating all 7 boolean flags | UAT init, maint req, ident, battery low, etc. |
-| [ ] | T006 | Write test for heartbeat timestamp boundary values (RED) | Test | – | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with values 0 and 131071 (max 17-bit) | Edge case validation |
-| [ ] | T007 | Write test for initialization message raw byte storage (RED) | Test | – | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with expected assertion on `audioInhibit` and `audioTest` fields | Minimal parsing (rarely emitted) |
-| [ ] | T008 | Implement heartbeat GPS status flag extraction (GREEN) | Core | T001 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T001 test passes with correct `gpsPosValid` extraction | Bit mask 0x80 on status1 byte |
-| [ ] | T009 | Implement heartbeat UTC validity flag extraction (GREEN) | Core | T002 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T002 test passes with correct `utcOk` extraction | Bit mask 0x01 on status2 byte |
-| [ ] | T010 | Implement heartbeat 17-bit timestamp extraction (GREEN) | Core | T003 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T003 test passes with correct seconds-since-0000Z | Extract status2[bit7] + timestamp[15:0] |
-| [ ] | T011 | Implement heartbeat message count extraction (GREEN) | Core | T004 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T004 test passes with correct uplink/basic counts | 5-bit field (bits 7-3) + 10-bit field (bits 1-0 + byte 2) |
-| [ ] | T012 | Implement all heartbeat status flags (7 flags) (GREEN) | Core | T005 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T005 test passes with all 7 boolean flags extracted | UAT init, maint, ident, battery, etc. |
-| [ ] | T013 | Implement heartbeat timestamp boundary value handling (GREEN) | Core | T006 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T006 test passes for 0 and 131071 values | Verify no overflow/underflow |
-| [ ] | T014 | Implement initialization message parser stub (GREEN) | Core | T007 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T007 test passes with `audioInhibit` and `audioTest` fields | Create `_parseInitialization()` method |
-| [ ] | T015 | Update routing table to call initialization parser | Core | T014 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | ID 0x02 routes to `_parseInitialization()` | Change case 0x02 from ErrorEvent to parser call |
-| [ ] | T016 | Add Gdl90Message fields for heartbeat data | Core | – | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/models/gdl90_message.dart` | All heartbeat fields defined with nullable types | Add: `uatInitialized?`, `maintRequired?`, `identActive?`, `batteryLow?` |
-| [ ] | T017 | Run all Phase 5 tests and verify 100% pass rate | Integration | T001-T016 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/` | All 7+ tests pass (GREEN phase) | Execute: `dart test test/unit/parser_test.dart` |
-| [ ] | T018 | Generate coverage report and verify ≥90% on parser.dart | Integration | T017 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/` | Coverage ≥90% on `lib/src/parser.dart`, 100% on heartbeat/init parsers | Execute coverage commands |
-| [ ] | T019 | Run dart analyze and dart format | Integration | T017 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/` | No analyzer warnings, no format changes needed | Quality gate |
-| [ ] | T020 | Write execution log documenting RED-GREEN-REFACTOR cycle | Doc | T001-T019 | `/Users/jordanknight/github/skyecho-controller-app/docs/plans/002-gdl90-receiver-parser/tasks/phase-5-core-message-types/execution.log.md` | Execution log created with all task outcomes | Final deliverable |
+| [x] | T001 | Add Gdl90Message fields for heartbeat data | Core | – | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/models/gdl90_message.dart` | All heartbeat fields defined with nullable types | [log](./execution.log.md#setup-phase-t001) [^1] |
+| [x] | T002 | Write test for heartbeat GPS position valid flag extraction (RED) | Test | T001 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with expected assertion on `gpsPosValid` field | [log](./execution.log.md#red-phase-t002-t008) [^3] |
+| [x] | T003 | Write test for heartbeat UTC validity flag extraction (RED) | Test | T001 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with expected assertion on `utcOk` field | [log](./execution.log.md#red-phase-t002-t008) [^3] |
+| [x] | T004 | Write test for heartbeat 17-bit timestamp extraction (RED) | Test | T001 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with expected assertion on `timeOfDaySeconds` field | [log](./execution.log.md#red-phase-t002-t008) [^3] |
+| [x] | T005 | Write test for heartbeat message count extraction (RED) | Test | T001 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with expected assertion on uplink/basic counts | [log](./execution.log.md#red-phase-t002-t008) [^3] |
+| [x] | T006 | Write test for all heartbeat status flags (10 boolean flags) (RED) | Test | T001 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS validating all 10 boolean flags | [log](./execution.log.md#red-phase-t002-t008) [^3] |
+| [x] | T007 | Write test for heartbeat timestamp boundary values (RED) | Test | T001 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with values 0 and 131071 (max 17-bit) | [log](./execution.log.md#red-phase-t002-t008) [^3] |
+| [x] | T008 | Write test for initialization message raw byte storage (RED) | Test | T001 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/test/unit/parser_test.dart` | Test FAILS with expected assertion on `audioInhibit` and `audioTest` fields | [log](./execution.log.md#red-phase-t002-t008) [^3] |
+| [x] | T009 | Implement heartbeat GPS status flag extraction (GREEN) | Core | T002 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T002 test passes with correct `gpsPosValid` extraction | [log](./execution.log.md#green-phase-t009-t016) [^2] |
+| [x] | T010 | Implement heartbeat UTC validity flag extraction (GREEN) | Core | T003 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T003 test passes with correct `utcOk` extraction | [log](./execution.log.md#green-phase-t009-t016) [^2] |
+| [x] | T011 | Implement heartbeat 17-bit timestamp extraction (GREEN) | Core | T004 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T004 test passes with correct seconds-since-0000Z | [log](./execution.log.md#green-phase-t009-t016) [^2] |
+| [x] | T012 | Implement heartbeat message count extraction (GREEN) | Core | T005 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T005 test passes with correct uplink/basic counts | [log](./execution.log.md#green-phase-t009-t016) [^2] |
+| [x] | T013 | Implement all heartbeat status flags (10 boolean flags) (GREEN) | Core | T006 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T006 test passes with all 10 boolean flags extracted | [log](./execution.log.md#green-phase-t009-t016) [^2] |
+| [x] | T014 | Implement heartbeat timestamp boundary value handling (GREEN) | Core | T007 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T007 test passes for 0 and 131071 values | [log](./execution.log.md#green-phase-t009-t016) [^2] |
+| [x] | T015 | Implement initialization message parser stub (GREEN) | Core | T008 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | T008 test passes with `audioInhibit` and `audioTest` fields | [log](./execution.log.md#green-phase-t009-t016) [^2] |
+| [x] | T016 | Update routing table to call initialization parser | Core | T015 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/lib/src/parser.dart` | ID 0x02 routes to `_parseInitialization()` | [log](./execution.log.md#green-phase-t009-t016) [^2] |
+| [x] | T017 | Run all Phase 5 tests and verify 100% pass rate | Integration | T001-T016 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/` | All 7+ tests pass (GREEN phase) | [log](./execution.log.md#refactor-phase-t017-t019) |
+| [x] | T018 | Generate coverage report and verify ≥90% on parser.dart | Integration | T017 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/` | Coverage ≥90% on `lib/src/parser.dart`, 100% on heartbeat/init parsers | [log](./execution.log.md#refactor-phase-t017-t019) |
+| [x] | T019 | Run dart analyze and dart format | Integration | T017 | `/Users/jordanknight/github/skyecho-controller-app/packages/skyecho_gdl90/` | No analyzer warnings, no format changes needed | [log](./execution.log.md#refactor-phase-t017-t019) |
+| [x] | T020 | Write execution log documenting RED-GREEN-REFACTOR cycle | Doc | T001-T019 | `/Users/jordanknight/github/skyecho-controller-app/docs/plans/002-gdl90-receiver-parser/tasks/phase-5-core-message-types/execution.log.md` | Execution log created with all task outcomes | [log](./execution.log.md) |
 
 ---
 
@@ -139,7 +139,7 @@ static Gdl90Event _parseHeartbeat(int messageId, Uint8List payload)
 **Gdl90Message Fields Available**:
 - Required: `messageType`, `messageId`
 - Heartbeat (nullable): `gpsPosValid?`, `utcOk?`, `timeOfDaySeconds?`, `messageCountUplink?`, `messageCountBasicAndLong?`
-- **Need to Add**: `uatInitialized?`, `maintRequired?`, `identActive?`, `batteryLow?` (additional heartbeat status flags)
+- **Need to Add**: 8 status fields from research: `uatInitialized?`, `maintRequired?`, `identActive?`, `ownshipAnonAddr?` (bit4, Address Type talkback), `batteryLow?`, `ratcs?` (bit2, ATC Services talkback), `csaRequested?`, `csaNotAvailable?` (complete status byte parsing per research gdl90.md:177-180, 431-433)
 
 #### E. Critical Findings Applied
 
@@ -265,11 +265,11 @@ expect(errorEvent.hint, isNotNull);
 **Phase 5 Goal**: Implement parsers for Heartbeat (ID 0x00) and Initialization (ID 0x02) messages using TDD with FAA test vectors.
 
 **Behavior Checklist** (from plan acceptance criteria):
-- [ ] Heartbeat parser extracts all 11 fields correctly from 6-byte payload
-- [ ] All heartbeat status flags tested individually (7 boolean flags)
+- [ ] Heartbeat parser extracts all 13 fields correctly from 6-byte payload (10 boolean status flags + 17-bit timestamp + 2 message counts)
+- [ ] All heartbeat status flags tested individually (10 boolean flags from status bytes 1 & 2, matching research implementation)
 - [ ] 17-bit timestamp boundary values tested (0, 131071)
 - [ ] Initialization message stores raw bytes in `audioInhibit` and `audioTest` fields
-- [ ] 100% coverage on heartbeat parsing logic
+- [ ] 100% coverage on heartbeat parsing logic (all status byte bits parsed per research gdl90.md:423-433)
 - [ ] Integration with routing table complete (ID 0x02 routes to `_parseInitialization()`)
 
 **Success Criteria**:
@@ -330,8 +330,9 @@ expect(errorEvent.hint, isNotNull);
 
 **Critical Discovery 04: Single Unified Message Model**
 - **Impact on Phase 5**: HIGH—must add missing heartbeat fields to `Gdl90Message`
-- **Tasks T016**: Add `uatInitialized?`, `maintRequired?`, `identActive?`, `batteryLow?` to model
+- **Task T001**: Add 8 status fields matching research: `uatInitialized?`, `maintRequired?`, `identActive?`, `ownshipAnonAddr?`, `batteryLow?`, `ratcs?`, `csaRequested?`, `csaNotAvailable?` (all boolean)
 - **Pattern**: All fields nullable; populate selectively based on `messageType`
+- **Note**: No `addressType` field in heartbeat—that enum is for Traffic/Ownship reports only
 
 **Critical Discovery 05: Wrapper Pattern for Error Handling**
 - **Impact on Phase 5**: All parsers return `Gdl90Event` (DataEvent or ErrorEvent)
@@ -554,24 +555,34 @@ sequenceDiagram
    - **Expected Output**: `messageCountUplink = 8`, `messageCountBasicAndLong = 512`
    - **RED Validation**: Test FAILS with null assertions on count fields
 
-5. **T005: All Heartbeat Status Flags (7 flags)**
-   - **Purpose**: Validates comprehensive status flag extraction
-   - **Flags**: gpsPosValid, uatInitialized, maintRequired, identActive, batteryLow, utcOk, (reserved)
-   - **Fixture**: Crafted frame with all flags set to known pattern
-   - **Expected Output**: All 7 boolean flags match expected bit values
-   - **RED Validation**: Test FAILS with null assertions on new flag fields
+5. **T005: All Heartbeat Message Count Extraction**
+   - **Purpose**: Validates uplink and basic/long message count extraction (was incorrectly labeled as T004 above)
+   - **Fixture**: uplinkCount = 8 (bits 7-3 of counts1), basicLongCount = 512 (10-bit field)
+   - **Binary Layout**: counts1 = 0b01000010, counts2 = 0x00
+   - **Expected Output**: `messageCountUplink = 8`, `messageCountBasicAndLong = 512`
+   - **RED Validation**: Test FAILS with null assertions on count fields
 
-6. **T006: Heartbeat Timestamp Boundary Values**
+6. **T006: All Heartbeat Status Flags (10 boolean flags)**
+   - **Purpose**: Validates comprehensive status flag extraction from status bytes 1 and 2 per research implementation (gdl90.md:423-433)
+   - **Flags from Status Byte 1**: bit7=gpsPosValid, bit6=maintRequired, bit5=identActive, bit4=ownshipAnonAddr, bit3=batteryLow, bit2=ratcs, bit0=uatInitialized (bit1 reserved/undefined)
+   - **Flags from Status Byte 2**: bit6=csaRequested, bit5=csaNotAvailable, bit0=utcOk (bit7=timestamp high bit; bits 4-1 reserved per FAA ICD §3.1.2, not extracted)
+   - **Fixture**: Crafted frame with all flags set to known pattern (e.g., status1=0xED for all flags set, status2=0x61)
+   - **Expected Output**: All 10 boolean flags match expected bit values
+   - **RED Validation**: Test FAILS with null assertions on new flag fields
+   - **Note**: NO `addressType` field in heartbeat (that's for Traffic/Ownship reports only). Reserved bits in status bytes not extracted (forward-compatible, matches research pattern).
+
+7. **T007: Heartbeat Timestamp Boundary Values**
    - **Purpose**: Validates edge case handling for 17-bit timestamp (0 to 131071)
    - **Fixtures**: Two frames with timestamp = 0 and timestamp = 131071 (0x1FFFF)
    - **Expected Output**: `timeOfDaySeconds = 0` and `timeOfDaySeconds = 131071`
    - **RED Validation**: Test FAILS or throws on boundary values
 
-7. **T007: Initialization Message Raw Byte Storage**
-   - **Purpose**: Validates initialization message parsing (minimal—rarely emitted)
-   - **Fixture**: 18-byte initialization frame with audioInhibit = 0x01, audioTest = 0x00
+8. **T008: Initialization Message Raw Byte Storage**
+   - **Purpose**: Validates initialization message parsing (minimal—rarely emitted, per FAA ICD §3.2 Table 4)
+   - **Fixture**: 18-byte initialization frame with audioInhibit = 0x01 (byte 0), audioTest = 0x00 (byte 1), remaining bytes reserved
    - **Expected Output**: `audioInhibit = 1`, `audioTest = 0`
    - **RED Validation**: Test FAILS with null assertions on audio fields
+   - **Note**: Research implementation confirms 18-byte payload (after CRC strip); stores raw bytes, extracts only audio fields
 
 **Coverage Requirements** (per plan § 4):
 - **100% Required**: Heartbeat field extraction logic (bit masks, shifts, 17-bit assembly)
@@ -589,29 +600,37 @@ sequenceDiagram
 
 **Phase 5 follows TDD RED-GREEN-REFACTOR cycle**:
 
-#### RED Phase (Tasks T001-T007)
+#### SETUP Phase (Task T001)
 
-1. **T001**: Write test for GPS position valid flag (status1 bit 7)—test FAILS
-2. **T002**: Write test for UTC OK flag (status2 bit 0)—test FAILS
-3. **T003**: Write test for 17-bit timestamp extraction—test FAILS
-4. **T004**: Write test for message count extraction (5-bit + 10-bit)—test FAILS
-5. **T005**: Write test for all 7 heartbeat status flags—test FAILS
-6. **T006**: Write test for timestamp boundary values (0, 131071)—test FAILS
-7. **T007**: Write test for initialization message—test FAILS
+1. **T001**: Add 8 missing heartbeat status fields to `Gdl90Message` model (matching research gdl90.md:177-180, 182-186):
+   - **Status Byte 1**: `mainten Required?`, `identActive?`, `ownshipAnonAddr?` (bit4 "Address Type talkback"), `batteryLow?`, `ratcs?` (bit2 "ATC Services talkback"), `uatInitialized?`
+   - **Status Byte 2**: `csaRequested?`, `csaNotAvailable?`
+   - **Note**: All boolean fields. NO `addressType` int field (that enum is for Traffic/Ownship reports, not heartbeat)
 
-**Validation**: Run `dart test` → All 7 tests FAIL with expected assertions
+**Validation**: `dart analyze` clean, tests compile successfully, all fields nullable and documented with bit positions
 
-#### GREEN Phase (Tasks T008-T016)
+#### RED Phase (Tasks T002-T008)
 
-8. **T008**: Implement GPS position valid flag extraction → T001 passes
-9. **T009**: Implement UTC OK flag extraction → T002 passes
-10. **T010**: Implement 17-bit timestamp extraction → T003 passes
-11. **T011**: Implement message count extraction → T004 passes
-12. **T012**: Implement all 7 status flags → T005 passes
-13. **T013**: Handle timestamp boundary values → T006 passes
-14. **T014**: Implement `_parseInitialization()` method → T007 passes
-15. **T015**: Update routing table case 0x02 → integration test passes
-16. **T016**: Add missing heartbeat fields to `Gdl90Message` model
+2. **T002**: Write test for GPS position valid flag (status1 bit 7)—test FAILS
+3. **T003**: Write test for UTC OK flag (status2 bit 0)—test FAILS
+4. **T004**: Write test for 17-bit timestamp extraction—test FAILS
+5. **T005**: Write test for message count extraction (5-bit + 10-bit)—test FAILS
+6. **T006**: Write test for all 7 heartbeat status flags—test FAILS
+7. **T007**: Write test for timestamp boundary values (0, 131071)—test FAILS
+8. **T008**: Write test for initialization message—test FAILS
+
+**Validation**: Run `dart test` → All 7 tests FAIL with expected assertions (not compile errors)
+
+#### GREEN Phase (Tasks T009-T016)
+
+9. **T009**: Implement GPS position valid flag extraction → T002 passes
+10. **T010**: Implement UTC OK flag extraction → T003 passes
+11. **T011**: Implement 17-bit timestamp extraction → T004 passes
+12. **T012**: Implement message count extraction → T005 passes
+13. **T013**: Implement all 7 status flags → T006 passes
+14. **T014**: Handle timestamp boundary values → T007 passes
+15. **T015**: Implement `_parseInitialization()` method → T008 passes
+16. **T016**: Update routing table case 0x02 → integration test passes
 
 **Validation**: Run `dart test` → All 7+ tests PASS (100% pass rate)
 
@@ -736,9 +755,13 @@ dart format .
 
 **Format**: `[^N]: <what-changed> | <why> | <files-affected> | <tests-added>`
 
-**Phase 5 Footnotes** (populated post-implementation):
+**Phase 5 Footnotes**:
 
-_(Empty table—will be filled during implementation)_
+[^1]: `class:packages/skyecho_gdl90/lib/src/models/gdl90_message.dart:Gdl90Message` — Added 8 nullable boolean heartbeat status fields: `maintRequired`, `identActive`, `ownshipAnonAddr`, `batteryLow`, `ratcs`, `uatInitialized`, `csaRequested`, `csaNotAvailable` with dartdoc comments documenting bit positions | Enables heartbeat parser to populate all status flags per FAA ICD | Files: gdl90_message.dart (+52 lines) | Tests: Model fields validated via parser tests
+
+[^2]: `method:packages/skyecho_gdl90/lib/src/parser.dart:Gdl90Parser._parseHeartbeat`, `method:packages/skyecho_gdl90/lib/src/parser.dart:Gdl90Parser._parseInitialization` — Replaced heartbeat stub with full field extraction (10 boolean flags, 17-bit timestamp, message counts); added initialization parser (18-byte payload validation) | Implements Phase 5 core message parsing per plan | Files: parser.dart (+118 lines) | Tests: 7 new Phase 5 tests covering all fields
+
+[^3]: `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_status1_bit7_when_parsing_then_extracts_gpsPosValid`, `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_status2_bit0_when_parsing_then_extracts_utcOk`, `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_timestamp_when_parsing_then_extracts_timeOfDay`, `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_counts_when_parsing_then_extracts_uplinkAndBasic`, `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_all_status_flags_when_parsing_then_extracts_all_10_flags`, `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_boundary_timestamps_when_parsing_then_handles_0_and_max`, `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_initialization_message_when_parsing_then_stores_audio_fields` — Added 7 comprehensive Phase 5 tests using Full TDD workflow (RED-GREEN-REFACTOR) | Validates all heartbeat fields, initialization parsing, and edge cases | Files: parser_test.dart (+158 lines) | Coverage: All acceptance criteria met
 
 ---
 

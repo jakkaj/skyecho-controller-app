@@ -4,8 +4,10 @@ library;
 // CRC validation (Phase 2)
 export 'src/crc.dart';
 
-// Future exports (added in Phases 3-8):
-// export 'src/framer.dart';
+// Byte framing (Phase 3)
+export 'src/framer.dart';
+
+// Future exports (added in Phases 4-8):
 // export 'src/parser.dart';
 // export 'src/models/gdl90_message.dart';
 // export 'src/models/gdl90_event.dart';

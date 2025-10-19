@@ -62,4 +62,3 @@ class Gdl90Crc {
     return calc == rx;
   }
 }
-

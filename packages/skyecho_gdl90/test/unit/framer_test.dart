@@ -71,15 +71,13 @@ void main() {
       framer.addBytes(input, (frame) => frames.add(frame));
 
       // Assert
-      expect(frames.isNotEmpty, isTrue,
-          reason: 'Frame should be extracted');
+      expect(frames.isNotEmpty, isTrue, reason: 'Frame should be extracted');
       final clear = frames[0];
       expect(clear[0], equals(0x00), reason: 'Message ID');
       expect(clear[1], equals(0x7E),
           reason: 'Position 1: De-escaped from 7D5E');
       expect(clear[2], equals(0x01), reason: 'Regular byte');
-      expect(clear[3], equals(0x7D),
-          reason: 'De-escaped from 7D5D');
+      expect(clear[3], equals(0x7D), reason: 'De-escaped from 7D5D');
       expect(clear[4], equals(0x02), reason: 'Regular byte');
     });
 
@@ -285,9 +283,7 @@ void main() {
     });
 
     // T008b: Escape followed by flag (state machine priority)
-    test(
-        'treats escape-then-flag as corrupted frame and starts new frame',
-        () {
+    test('treats escape-then-flag as corrupted frame and starts new frame', () {
       // Purpose: Validates flag detection takes precedence over escape
       // Quality Contribution: Prevents state machine bug where flag gets
       // de-escaped
@@ -396,14 +392,24 @@ void main() {
 
       // Now send a valid frame - should work (buffer was cleared)
       final validFrame = Uint8List.fromList([
-        0x7E, 0x00, 0x81, 0x41, 0xDB, 0xD0, 0x08, 0x02, 0xB3, 0x8B, 0x7E,
+        0x7E,
+        0x00,
+        0x81,
+        0x41,
+        0xDB,
+        0xD0,
+        0x08,
+        0x02,
+        0xB3,
+        0x8B,
+        0x7E,
       ]);
       framer.addBytes(validFrame, (frame) => frames.add(frame));
 
       // Assert
       expect(frames.length, equals(1),
           reason: 'Buffer should have been cleared at 868-byte limit, '
-                  'then valid frame should parse');
+              'then valid frame should parse');
     });
   });
 
@@ -419,7 +425,17 @@ void main() {
 
       // FAA heartbeat frame
       final singleFrame = Uint8List.fromList([
-        0x7E, 0x00, 0x81, 0x41, 0xDB, 0xD0, 0x08, 0x02, 0xB3, 0x8B, 0x7E,
+        0x7E,
+        0x00,
+        0x81,
+        0x41,
+        0xDB,
+        0xD0,
+        0x08,
+        0x02,
+        0xB3,
+        0x8B,
+        0x7E,
       ]);
 
       // Build stream of 1000 frames
@@ -479,7 +495,17 @@ void main() {
 
       // Valid frame
       final input = Uint8List.fromList([
-        0x7E, 0x00, 0x81, 0x41, 0xDB, 0xD0, 0x08, 0x02, 0xB3, 0x8B, 0x7E,
+        0x7E,
+        0x00,
+        0x81,
+        0x41,
+        0xDB,
+        0xD0,
+        0x08,
+        0x02,
+        0xB3,
+        0x8B,
+        0x7E,
       ]);
 
       // Act

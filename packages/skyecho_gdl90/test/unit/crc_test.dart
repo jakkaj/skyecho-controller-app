@@ -76,8 +76,8 @@ void main() {
       // Append CRC LSB-first
       final frame = Uint8List.fromList([
         ...message,
-        crc & 0xFF,         // CRC LSB
-        (crc >> 8) & 0xFF,  // CRC MSB
+        crc & 0xFF, // CRC LSB
+        (crc >> 8) & 0xFF, // CRC MSB
       ]);
 
       expect(Gdl90Crc.verifyTrailing(frame), isTrue,
@@ -109,15 +109,15 @@ void main() {
       // Build frame with CRC appended LSB-first
       final lsbFirst = Uint8List.fromList([
         ...message,
-        crc & 0xFF,         // LSB first
-        (crc >> 8) & 0xFF,  // MSB second
+        crc & 0xFF, // LSB first
+        (crc >> 8) & 0xFF, // MSB second
       ]);
 
       // Build frame with CRC appended MSB-first (WRONG for GDL90)
       final msbFirst = Uint8List.fromList([
         ...message,
-        (crc >> 8) & 0xFF,  // MSB first (wrong)
-        crc & 0xFF,         // LSB second (wrong)
+        (crc >> 8) & 0xFF, // MSB first (wrong)
+        crc & 0xFF, // LSB second (wrong)
       ]);
 
       expect(Gdl90Crc.verifyTrailing(lsbFirst), isTrue,

@@ -840,16 +840,16 @@ group('Gdl90Framer', () {
 
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
-| 4.1 | [ ] | Write test for Gdl90Message model creation | Can create message with nullable fields | - | All fields nullable except messageType/messageId |
-| 4.2 | [ ] | Write test for Gdl90Event wrapper (data) | DataEvent contains Gdl90Message | - | Per Critical Discovery 05 |
-| 4.3 | [ ] | Write test for Gdl90Event wrapper (error) | ErrorEvent contains reason/hint/rawBytes | - | Error handling pattern |
-| 4.4 | [ ] | Write test for message ID routing | ID 0 → Heartbeat parser stub | - | Routing table |
-| 4.5 | [ ] | Write test for unknown message ID | Emits error event, continues processing | - | Robustness |
-| 4.6 | [ ] | Write test for truncated message | Emits error event with diagnostic | - | Invalid length handling |
-| 4.7 | [ ] | Implement Gdl90Message class | All fields defined, nullable | - | Single unified model |
-| 4.8 | [ ] | Implement Gdl90Event sealed class | DataEvent and ErrorEvent subclasses | - | Wrapper pattern |
-| 4.9 | [ ] | Implement Gdl90Parser.parse() stub | Routes by message ID, returns event | - | Orchestration |
-| 4.10 | [ ] | Run all routing tests | All tests pass (100% pass rate) | - | Green phase |
+| 4.1 | [x] | Write test for Gdl90Message model creation | Can create message with nullable fields | [📋](tasks/phase-4-message-routing-parser-core/execution.log.md#task-41-419-implement-message-routing-parser-core-complete-tdd-cycle) | All fields nullable except messageType/messageId · Completed [^7][^8] |
+| 4.2 | [x] | Write test for Gdl90Event wrapper (data) | DataEvent contains Gdl90Message | [📋](tasks/phase-4-message-routing-parser-core/execution.log.md#task-41-419-implement-message-routing-parser-core-complete-tdd-cycle) | Per Critical Discovery 05 · Completed [^9][^11] |
+| 4.3 | [x] | Write test for Gdl90Event wrapper (error) | ErrorEvent contains reason/hint/rawBytes | [📋](tasks/phase-4-message-routing-parser-core/execution.log.md#task-41-419-implement-message-routing-parser-core-complete-tdd-cycle) | Error handling pattern · Completed [^9][^11] |
+| 4.4 | [x] | Write test for message ID routing | ID 0 → Heartbeat parser stub | [📋](tasks/phase-4-message-routing-parser-core/execution.log.md#task-41-419-implement-message-routing-parser-core-complete-tdd-cycle) | Routing table · Completed [^10][^11] |
+| 4.5 | [x] | Write test for unknown message ID | Emits error event, continues processing | [📋](tasks/phase-4-message-routing-parser-core/execution.log.md#task-41-419-implement-message-routing-parser-core-complete-tdd-cycle) | Robustness · Completed [^11] |
+| 4.6 | [x] | Write test for truncated message | Emits error event with diagnostic | [📋](tasks/phase-4-message-routing-parser-core/execution.log.md#task-41-419-implement-message-routing-parser-core-complete-tdd-cycle) | Invalid length handling · Completed [^11] |
+| 4.7 | [x] | Implement Gdl90Message class | All fields defined, nullable | [📋](tasks/phase-4-message-routing-parser-core/execution.log.md#task-41-419-implement-message-routing-parser-core-complete-tdd-cycle) | Single unified model · Completed [^8] |
+| 4.8 | [x] | Implement Gdl90Event sealed class | DataEvent and ErrorEvent subclasses | [📋](tasks/phase-4-message-routing-parser-core/execution.log.md#task-41-419-implement-message-routing-parser-core-complete-tdd-cycle) | Wrapper pattern · Completed [^9] |
+| 4.9 | [x] | Implement Gdl90Parser.parse() stub | Routes by message ID, returns event | [📋](tasks/phase-4-message-routing-parser-core/execution.log.md#task-41-419-implement-message-routing-parser-core-complete-tdd-cycle) | Orchestration · Completed [^10] |
+| 4.10 | [x] | Run all routing tests | All tests pass (100% pass rate) | [📋](tasks/phase-4-message-routing-parser-core/execution.log.md#task-41-419-implement-message-routing-parser-core-complete-tdd-cycle) | Green phase · Completed (11/11 tests passing) [^11] |
 
 ### Test Examples (Write First!)
 
@@ -2000,7 +2000,7 @@ test('parse real heartbeat from captured fixture', () {
 - [x] Phase 1: Project Setup & Package Structure - COMPLETE
 - [x] Phase 2: CRC Validation Foundation - COMPLETE
 - [x] Phase 3: Byte Framing & Escaping - COMPLETE
-- [ ] Phase 4: Message Routing & Parser Core - NOT STARTED
+- [x] Phase 4: Message Routing & Parser Core - COMPLETE (100%)
 - [ ] Phase 5: Core Message Types (Heartbeat, Initialization) - NOT STARTED
 - [ ] Phase 6: Position Messages (Ownship, Traffic) - NOT STARTED
 - [ ] Phase 7: Additional Messages (HAT, Uplink, Geo Altitude, Pass-Through) - NOT STARTED
@@ -2014,7 +2014,7 @@ test('parse real heartbeat from captured fixture', () {
 
 | Milestone | Phases | Status | Target |
 |-----------|--------|--------|--------|
-| **M1: Core Parsing** | 1-4 | In Progress (2.9/4 phases = 73%) | CRC, framing, routing |
+| **M1: Core Parsing** | 1-4 | COMPLETE (4/4 phases = 100%) | CRC, framing, routing |
 | **M2: Message Types** | 5-7 | Not Started | All 9 message types |
 | **M3: Transport & Tools** | 8-10 | Not Started | Stream, capture, examples |
 | **M4: Documentation & Validation** | 11-12 | Not Started | Docs, integration tests |
@@ -2061,6 +2061,33 @@ During implementation, footnote tags from task Notes are added here with details
 
 [^6]: Task 3.18 - Execution log documenting RED-GREEN-REFACTOR workflow
   - `file:execution.log.md`
+
+### Phase 4: Message Routing & Parser Core
+
+[^7]: Task 4.1 (T001) - Created Gdl90MessageType enum
+  - `enum:lib/src/models/gdl90_message.dart:Gdl90MessageType`
+
+[^8]: Task 4.7 (T012) - Created Gdl90Message unified model
+  - `class:lib/src/models/gdl90_message.dart:Gdl90Message`
+
+[^9]: Task 4.8 (T013) - Created Gdl90Event sealed class hierarchy
+  - `class:lib/src/models/gdl90_event.dart:Gdl90Event`
+  - `class:lib/src/models/gdl90_event.dart:Gdl90DataEvent`
+  - `class:lib/src/models/gdl90_event.dart:Gdl90ErrorEvent`
+  - `class:lib/src/models/gdl90_event.dart:Gdl90IgnoredEvent`
+
+[^10]: Task 4.9 (T014-T015) - Created Gdl90Parser routing and heartbeat stub
+  - `class:lib/src/parser.dart:Gdl90Parser`
+  - `method:lib/src/parser.dart:Gdl90Parser.parse`
+  - `method:lib/src/parser.dart:Gdl90Parser._parseHeartbeat`
+
+[^11]: Task 4.1-4.10 (T002-T011, T017) - Comprehensive test suite
+  - `file:test/unit/message_test.dart`
+  - `file:test/unit/event_test.dart`
+  - `file:test/unit/parser_test.dart`
+
+[^12]: Task 4.9 (T016) - Updated library exports
+  - `file:lib/skyecho_gdl90.dart`
 
 ---
 

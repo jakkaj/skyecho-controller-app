@@ -1049,16 +1049,16 @@ group('Gdl90Parser message routing', () {
 
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
-| 5.1 | [ ] | Write test for heartbeat GPS status flag extraction | gpsPosValid extracted from status byte 1 bit 7 | - | Bit 7 = 0x80 |
-| 5.2 | [ ] | Write test for heartbeat UTC validity flag | utcOk extracted from status byte 2 bit 0 | - | Bit 0 = 0x01 |
-| 5.3 | [ ] | Write test for heartbeat 17-bit timestamp | timeOfDaySeconds from 3 bytes (17-bit value) | - | Seconds since 0000Z |
-| 5.4 | [ ] | Write test for heartbeat message counts | uplinkCount and basicLongCount extracted | - | 5-bit and 10-bit fields |
-| 5.5 | [ ] | Write test for all heartbeat status flags | All 7 boolean flags correctly extracted | - | Maintenance, ident, battery, etc. |
-| 5.6 | [ ] | Write test for initialization message | Raw bytes stored in Gdl90Message | - | Minimal parsing (rarely emitted) |
-| 5.7 | [ ] | Implement parseHeartbeat() method | Extracts all fields, returns Gdl90Message | - | 7-byte payload |
-| 5.8 | [ ] | Implement parseInitialization() stub | Stores raw bytes, returns Gdl90Message | - | 18-byte payload |
-| 5.9 | [ ] | Integrate parsers with routing table | Router calls correct parser per ID | - | Update Phase 4 routing |
-| 5.10 | [ ] | Run all heartbeat/initialization tests | All tests pass (100% pass rate) | - | Green phase |
+| 5.1 | [x] | Write test for heartbeat GPS status flag extraction | gpsPosValid extracted from status byte 1 bit 7 | [📋](tasks/phase-5-core-message-types/execution.log.md#red-phase-t002-t008) | Complete [^13] |
+| 5.2 | [x] | Write test for heartbeat UTC validity flag | utcOk extracted from status byte 2 bit 0 | [📋](tasks/phase-5-core-message-types/execution.log.md#red-phase-t002-t008) | Complete [^13] |
+| 5.3 | [x] | Write test for heartbeat 17-bit timestamp | timeOfDaySeconds from 3 bytes (17-bit value) | [📋](tasks/phase-5-core-message-types/execution.log.md#red-phase-t002-t008) | Complete [^13] |
+| 5.4 | [x] | Write test for heartbeat message counts | uplinkCount and basicLongCount extracted | [📋](tasks/phase-5-core-message-types/execution.log.md#red-phase-t002-t008) | Complete [^13] |
+| 5.5 | [x] | Write test for heartbeat 17-bit boundary timestamps | Handles 0x00000 and 0x1FFFF edge cases | [📋](tasks/phase-5-core-message-types/execution.log.md#red-phase-t002-t008) | Complete [^13] |
+| 5.6 | [x] | Write test for initialization message | Raw bytes stored in Gdl90Message | [📋](tasks/phase-5-core-message-types/execution.log.md#red-phase-t002-t008) | Complete [^13] |
+| 5.7 | [x] | Implement parseHeartbeat() method | Extracts all fields, returns Gdl90Message | [📋](tasks/phase-5-core-message-types/execution.log.md#green-phase-t009-t016) | Complete [^14] |
+| 5.8 | [x] | Implement parseInitialization() stub | Stores raw bytes, returns Gdl90Message | [📋](tasks/phase-5-core-message-types/execution.log.md#green-phase-t009-t016) | Complete [^14] |
+| 5.9 | [x] | Integrate parsers with routing table | Router calls correct parser per ID | [📋](tasks/phase-5-core-message-types/execution.log.md#green-phase-t009-t016) | Complete [^14] |
+| 5.10 | [x] | Run all heartbeat/initialization tests | All tests pass (100% pass rate) | [📋](tasks/phase-5-core-message-types/execution.log.md#refactor-phase-t017-t019) | Phase complete ✅ |
 
 ### Test Examples (Write First!)
 

@@ -67,29 +67,34 @@ class Gdl90Parser {
       case 0x02: // Initialization
         return _parseInitialization(messageId, payload);
 
+      case 0x07: // Uplink Data
+        return _parseUplink(messageId, payload);
+
+      case 0x09: // Height Above Terrain
+        return _parseHAT(messageId, payload);
+
       case 0x0A: // Ownship Report
         return _parseOwnship(messageId, payload);
+
+      case 0x0B: // Ownship Geometric Altitude
+        return _parseOwnshipGeoAltitude(messageId, payload);
 
       case 0x14: // Traffic Report
         return _parseTraffic(messageId, payload);
 
-      case 0x07: // Uplink
-      case 0x09: // HAT
-      case 0x0B: // Ownship Geo Altitude
-      case 0x1E: // Basic Report
-      case 0x1F: // Long Report
-        return Gdl90ErrorEvent(
-          reason: 'Unsupported message type: 0x${messageId.toRadixString(16)}',
-          hint: 'This message type will be implemented in Phase 7',
-          rawBytes: frame,
-        );
+      case 0x1E: // Pass-Through Basic Report
+      case 0x1F: // Pass-Through Long Report
+        return _parsePassThrough(messageId, payload);
 
       default:
         return Gdl90ErrorEvent(
           reason:
               'Unknown message ID: 0x${messageId.toRadixString(16).toUpperCase()}',
           hint:
-              'Expected IDs: 0x00, 0x02, 0x07, 0x09, 0x0A, 0x0B, 0x14, 0x1E, 0x1F',
+              'Supported IDs: 0x00 (Heartbeat), 0x02 (Initialization), 0x07 (Uplink), '
+              '0x09 (HAT), 0x0A (Ownship), 0x0B (Geo Altitude), 0x14 (Traffic), '
+              '0x1E (Basic Report), 0x1F (Long Report). Additional message types '
+              'may be implemented in Phase 8+.',
           rawBytes: frame,
         );
     }
@@ -532,6 +537,233 @@ class Gdl90Parser {
       messageId: messageId,
       audioInhibit: audioInhibit,
       audioTest: audioTest,
+    ));
+  }
+
+  /// Invalid HAT marker (16-bit field)
+  static const int _HAT_INVALID = 0x8000;
+
+  /// Parse Height Above Terrain message (ID 0x09).
+  ///
+  /// Extracts 16-bit signed height in feet with invalid marker check.
+  /// Per Critical Insight #2: Checks invalid marker (0x8000) BEFORE sign
+  /// conversion to prevent treating invalid value as -32768 feet.
+  ///
+  /// Payload structure (2 bytes after CRC strip):
+  /// - Bytes 0-1: Height above terrain (16-bit signed MSB-first)
+  ///   - Special value: 0x8000 → null (invalid marker)
+  ///   - Range: -32768 to +32767 feet (when valid)
+  ///
+  /// Returns [Gdl90DataEvent] with [heightAboveTerrainFeet] populated, or
+  /// [Gdl90ErrorEvent] if payload is truncated.
+  static Gdl90Event _parseHAT(int messageId, Uint8List payload) {
+    assert(
+      messageId == 0x09,
+      'HAT parser received ID: 0x${messageId.toRadixString(16).toUpperCase()}',
+    );
+
+    // Strict length validation: HAT requires exactly 2-byte payload
+    if (payload.length != 2) {
+      return Gdl90ErrorEvent(
+        reason:
+            'Truncated HAT message: expected 2 bytes, got ${payload.length}',
+        hint: 'HAT payload format: [height_msb, height_lsb]',
+      );
+    }
+
+    // Extract 16-bit MSB-first height
+    final raw16bit = (payload[0] << 8) | payload[1];
+
+    // Check invalid marker BEFORE sign conversion (Critical Insight #2)
+    int? heightAboveTerrainFeet;
+    if (raw16bit == _HAT_INVALID) {
+      heightAboveTerrainFeet = null; // Invalid marker
+    } else {
+      heightAboveTerrainFeet = _toSigned(raw16bit, 16);
+    }
+
+    return Gdl90DataEvent(Gdl90Message(
+      messageType: Gdl90MessageType.hat,
+      messageId: messageId,
+      heightAboveTerrainFeet: heightAboveTerrainFeet,
+    ));
+  }
+
+  /// Maximum Uplink payload size in bytes (security limit per Insight #1)
+  static const int _MAX_UPLINK_PAYLOAD_BYTES = 1024;
+
+  /// Parse Uplink Data message (ID 0x07).
+  ///
+  /// Extracts 24-bit LSB-first time-of-reception (TOR) and variable-length
+  /// UAT payload (typically 432 bytes, max 1024 bytes per security limit).
+  ///
+  /// Per Critical Insight #1: Enforces 1KB upper bound to prevent memory
+  /// bomb DoS attacks from malicious or corrupt frames.
+  ///
+  /// Payload structure (3+ bytes after CRC strip):
+  /// - Bytes 0-2: Time of reception (24-bit LSB-first, 80ns units)
+  /// - Bytes 3+: Variable-length UAT uplink payload (max 1024 bytes)
+  ///
+  /// Returns [Gdl90DataEvent] with [timeOfReception80ns] and [uplinkPayload]
+  /// populated, or [Gdl90ErrorEvent] if payload is truncated or exceeds limit.
+  static Gdl90Event _parseUplink(int messageId, Uint8List payload) {
+    assert(
+      messageId == 0x07,
+      'Uplink parser received ID: 0x${messageId.toRadixString(16).toUpperCase()}',
+    );
+
+    // Minimum length validation: 3 bytes for TOR
+    if (payload.length < 3) {
+      return Gdl90ErrorEvent(
+        reason:
+            'Truncated uplink message: expected >= 3 bytes, got ${payload.length}',
+        hint: 'Uplink payload format: [tor_lsb, tor_mid, tor_msb, ...payload]',
+      );
+    }
+
+    // Security validation: 1KB upper bound prevents memory bombs (Insight #1)
+    if (payload.length > 3 + _MAX_UPLINK_PAYLOAD_BYTES) {
+      return Gdl90ErrorEvent(
+        reason:
+            'Uplink payload exceeds 1KB security limit: ${payload.length - 3} bytes',
+        hint:
+            'Maximum allowed: ${_MAX_UPLINK_PAYLOAD_BYTES} bytes. This limit prevents memory exhaustion from malicious frames.',
+      );
+    }
+
+    // Extract 24-bit LSB-first TOR
+    final tor = payload[0] | (payload[1] << 8) | (payload[2] << 16);
+
+    // Extract variable-length payload (everything after TOR)
+    final uplinkPayload = payload.sublist(3);
+
+    return Gdl90DataEvent(Gdl90Message(
+      messageType: Gdl90MessageType.uplinkData,
+      messageId: messageId,
+      timeOfReception80ns: tor,
+      uplinkPayload: uplinkPayload,
+    ));
+  }
+
+  /// Parse Ownship Geometric Altitude message (ID 0x0B).
+  ///
+  /// Extracts 16-bit geometric altitude with 5-ft resolution (different from
+  /// 25-ft Ownship altitude) and optional vertical metrics (warning flag +
+  /// VFOM).
+  ///
+  /// Per Insight #4: VFOM special values (0x7FFF, 0x7EEE) are preserved in
+  /// [vfomMetersRaw]; computed property [vfomMeters] returns null for both.
+  ///
+  /// Payload structure (2-4 bytes after CRC strip):
+  /// - Bytes 0-1: Geometric altitude (16-bit signed MSB-first, 5-ft resolution)
+  /// - Bytes 2-3: Vertical metrics (optional, 16-bit MSB-first)
+  ///   - Bit 15: Vertical warning flag
+  ///   - Bits 14-0: VFOM in meters (0x7FFF=not available, 0x7EEE=>32766m)
+  ///
+  /// Returns [Gdl90DataEvent] with [geoAltitudeFeet], [verticalWarning], and
+  /// [vfomMetersRaw] populated. Defaults: verticalWarning=false, vfomMetersRaw=0x7FFF
+  /// if metrics field missing.
+  static Gdl90Event _parseOwnshipGeoAltitude(int messageId, Uint8List payload) {
+    assert(
+      messageId == 0x0B,
+      'Geo Altitude parser received ID: 0x${messageId.toRadixString(16).toUpperCase()}',
+    );
+
+    // Flexible length validation: >= 2 bytes (vertical metrics optional)
+    if (payload.length < 2) {
+      return Gdl90ErrorEvent(
+        reason:
+            'Truncated geo altitude message: expected >= 2 bytes, got ${payload.length}',
+        hint:
+            'Geo altitude payload format: [alt_msb, alt_lsb, metrics_msb?, metrics_lsb?]',
+      );
+    }
+
+    // Extract 16-bit altitude (MSB-first) with 5-ft resolution
+    final raw16bit = (payload[0] << 8) | payload[1];
+    final geoAltitudeFeet = _toSigned(raw16bit, 16) * 5;
+
+    // Extract vertical metrics if present (optional field)
+    bool verticalWarning;
+    int vfomMetersRaw;
+
+    if (payload.length >= 4) {
+      // Vertical metrics present
+      final metrics = (payload[2] << 8) | payload[3];
+      verticalWarning = (metrics & 0x8000) != 0; // Bit 15
+      vfomMetersRaw = metrics & 0x7FFF; // Bits 14-0
+    } else {
+      // Vertical metrics missing - use defaults
+      verticalWarning = false;
+      vfomMetersRaw = 0x7FFF; // "Not available" per Insight #4
+    }
+
+    return Gdl90DataEvent(Gdl90Message(
+      messageType: Gdl90MessageType.ownshipGeoAltitude,
+      messageId: messageId,
+      geoAltitudeFeet: geoAltitudeFeet,
+      verticalWarning: verticalWarning,
+      vfomMetersRaw: vfomMetersRaw,
+    ));
+  }
+
+  /// Parse Pass-Through message (ID 0x1E Basic, 0x1F Long).
+  ///
+  /// Unified method handles both Basic Report (ID 30, 18-byte payload) and
+  /// Long Report (ID 31, 34-byte payload). Differentiates by [messageId] to
+  /// populate correct payload field.
+  ///
+  /// Per Critical Insight #2: Defensive assertion catches routing table bugs
+  /// where wrong message ID is passed to this method.
+  ///
+  /// ⚠️ IMPORTANT: This method depends on correct routing table configuration.
+  /// Only call from switch cases 0x1E and 0x1F. Assertion will catch bugs in
+  /// debug mode.
+  ///
+  /// Payload structure (3+ bytes after CRC strip):
+  /// - Bytes 0-2: Time of reception (24-bit LSB-first, 80ns units)
+  /// - Bytes 3+: Variable-length UAT report payload
+  ///   - Basic (0x1E): typically 18 bytes
+  ///   - Long (0x1F): typically 34 bytes
+  ///
+  /// Returns [Gdl90DataEvent] with [timeOfReception80ns] and either
+  /// [basicReportPayload] or [longReportPayload] populated.
+  static Gdl90Event _parsePassThrough(int messageId, Uint8List payload) {
+    // Defensive assertion: Catch routing table mistakes (Insight #2)
+    assert(
+      messageId == 0x1E || messageId == 0x1F,
+      'Invalid messageId 0x${messageId.toRadixString(16).toUpperCase()} for '
+      '_parsePassThrough - only 0x1E/0x1F supported. '
+      'This indicates a routing table bug.',
+    );
+
+    // Permissive length validation: >= 3 bytes for TOR
+    if (payload.length < 3) {
+      return Gdl90ErrorEvent(
+        reason:
+            'Truncated pass-through message: expected >= 3 bytes, got ${payload.length}',
+        hint:
+            'Pass-through payload format: [tor_lsb, tor_mid, tor_msb, ...uat_report]',
+      );
+    }
+
+    // Extract 24-bit LSB-first TOR
+    final tor = payload[0] | (payload[1] << 8) | (payload[2] << 16);
+
+    // Extract variable-length UAT report payload
+    final reportPayload = payload.sublist(3);
+
+    // Determine message type and payload field from messageId
+    final messageType = messageId == 0x1E
+        ? Gdl90MessageType.basicReport
+        : Gdl90MessageType.longReport;
+
+    return Gdl90DataEvent(Gdl90Message(
+      messageType: messageType,
+      messageId: messageId,
+      timeOfReception80ns: tor,
+      basicReportPayload: messageId == 0x1E ? reportPayload : null,
+      longReportPayload: messageId == 0x1F ? reportPayload : null,
     ));
   }
 }

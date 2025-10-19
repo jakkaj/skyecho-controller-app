@@ -120,7 +120,44 @@ class Gdl90Message {
   final int? heightAboveTerrainFeet;
 
   // Uplink fields (ID 0x07)
+  /// 24-bit time of reception in 80ns units (LSB-first)
+  ///
+  /// Used by:
+  /// - Uplink Data (ID 0x07)
+  /// - Pass-Through Basic (ID 0x1E)
+  /// - Pass-Through Long (ID 0x1F)
+  ///
+  /// ⚠️ Wraparound Warning: 24-bit counter wraps every 1.34 seconds.
+  /// Use wraparound-aware comparison for temporal ordering.
+  final int? timeOfReception80ns;
+
+  /// Variable-length UAT uplink payload (typically 432 bytes, max 1024 bytes)
+  ///
+  /// Raw FIS-B weather data bytes. Decoding deferred to future enhancement.
   final Uint8List? uplinkPayload;
+
+  // Ownship Geometric Altitude fields (ID 0x0B)
+  /// Geometric altitude in feet with 5-ft resolution
+  final int? geoAltitudeFeet;
+
+  /// Vertical warning flag from vertical metrics field (bit 15)
+  final bool? verticalWarning;
+
+  /// Vertical Figure of Merit in meters (raw value with special cases)
+  ///
+  /// Special values:
+  /// - 0x7FFF (32767): Not available
+  /// - 0x7EEE (32494): Exceeds 32766 meters
+  ///
+  /// Use computed property `vfomMeters` for null-safe access.
+  final int? vfomMetersRaw;
+
+  // Pass-Through fields (ID 0x1E, 0x1F)
+  /// UAT basic report payload (typically 18 bytes)
+  final Uint8List? basicReportPayload;
+
+  /// UAT long report payload (typically 34 bytes)
+  final Uint8List? longReportPayload;
 
   // Initialization fields (ID 0x02)
   final int? audioInhibit;
@@ -158,9 +195,40 @@ class Gdl90Message {
     // HAT
     this.heightAboveTerrainFeet,
     // Uplink
+    this.timeOfReception80ns,
     this.uplinkPayload,
+    // Geo Altitude
+    this.geoAltitudeFeet,
+    this.verticalWarning,
+    this.vfomMetersRaw,
+    // Pass-Through
+    this.basicReportPayload,
+    this.longReportPayload,
     // Initialization
     this.audioInhibit,
     this.audioTest,
   });
+
+  /// Computed property: Time of reception in seconds
+  ///
+  /// Converts 80ns units to seconds for convenience.
+  /// Returns null if [timeOfReception80ns] is null.
+  double? get timeOfReceptionSeconds {
+    if (timeOfReception80ns == null) return null;
+    return timeOfReception80ns! / 12500000.0; // 1 second = 12.5M * 80ns
+  }
+
+  /// Computed property: VFOM in meters with null for special values
+  ///
+  /// Returns:
+  /// - null if [vfomMetersRaw] is 0x7FFF (not available) or 0x7EEE (exceeds max)
+  /// - Actual meters value otherwise
+  ///
+  /// For specialists needing to distinguish "not available" from "exceeds max",
+  /// use [vfomMetersRaw] directly.
+  int? get vfomMeters {
+    if (vfomMetersRaw == null) return null;
+    if (vfomMetersRaw == 0x7FFF || vfomMetersRaw == 0x7EEE) return null;
+    return vfomMetersRaw;
+  }
 }

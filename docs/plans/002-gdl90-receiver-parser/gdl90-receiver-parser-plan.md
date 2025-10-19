@@ -1316,19 +1316,19 @@ test('ownship report with invalid position (no GPS fix)', () {
 
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
-| 7.1 | [ ] | Write test for HAT valid value | 16-bit signed feet correctly extracted | - | Range: -32768 to +32767 feet |
-| 7.2 | [ ] | Write test for HAT invalid marker | 0x8000 → null (invalid marker) | - | Special value |
-| 7.3 | [ ] | Write test for Uplink TOR extraction | 24-bit LSB-first time-of-reception | - | 80ns units |
-| 7.4 | [ ] | Write test for Uplink payload storage | 432-byte UAT payload stored | - | Raw bytes (no FIS-B decode) |
-| 7.5 | [ ] | Write test for Geo Altitude (5-ft resolution) | Altitude scaled correctly (5-ft steps) | - | 16-bit signed * 5 |
-| 7.6 | [ ] | Write test for Geo Altitude vertical metrics | Warning flag + VFOM extracted | - | 16-bit field (bit 15 + 15-bit VFOM) |
-| 7.7 | [ ] | Write test for Pass-Through Basic (ID 30) | TOR + 18-byte payload | - | UAT basic report |
-| 7.8 | [ ] | Write test for Pass-Through Long (ID 31) | TOR + 34-byte payload | - | UAT long report |
-| 7.9 | [ ] | Implement parseHAT() method | Extracts height, handles invalid marker | - | 2-byte payload |
-| 7.10 | [ ] | Implement parseUplink() method | Extracts TOR, stores payload | - | Variable length (3+ bytes) |
-| 7.11 | [ ] | Implement parseGeoAltitude() method | Extracts altitude, vertical metrics | - | 4-byte payload |
-| 7.12 | [ ] | Implement parsePassThrough() methods | Handles both Basic (30) and Long (31) | - | Shared logic |
-| 7.13 | [ ] | Run all additional message tests | All tests pass (100% pass rate) | - | Green phase |
+| 7.1 | [x] | Write test for HAT valid value | 16-bit signed feet correctly extracted | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^30] |
+| 7.2 | [x] | Write test for HAT invalid marker | 0x8000 → null (invalid marker) | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^30] |
+| 7.3 | [x] | Write test for Uplink TOR extraction | 24-bit LSB-first time-of-reception | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^30] |
+| 7.4 | [x] | Write test for Uplink payload storage | 432-byte UAT payload stored | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^30] |
+| 7.5 | [x] | Write test for Geo Altitude (5-ft resolution) | Altitude scaled correctly (5-ft steps) | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^30] |
+| 7.6 | [x] | Write test for Geo Altitude vertical metrics | Warning flag + VFOM extracted | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^30] |
+| 7.7 | [x] | Write test for Pass-Through Basic (ID 30) | TOR + 18-byte payload | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^30] |
+| 7.8 | [x] | Write test for Pass-Through Long (ID 31) | TOR + 34-byte payload | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^30] |
+| 7.9 | [x] | Implement parseHAT() method | Extracts height, handles invalid marker | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^27][^29] |
+| 7.10 | [x] | Implement parseUplink() method | Extracts TOR, stores payload | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^27][^29] |
+| 7.11 | [x] | Implement parseGeoAltitude() method | Extracts altitude, vertical metrics | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^27] |
+| 7.12 | [x] | Implement parsePassThrough() methods | Handles both Basic (30) and Long (31) | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · log#task-71-713-complete-phase-7-implementation [^27][^28] |
+| 7.13 | [x] | Run all additional message tests | All tests pass (100% pass rate) | [📋](tasks/phase-7-additional-messages/execution.log.md#task-71-713-complete-phase-7-implementation) | Completed · 75/75 tests passing · log#task-71-713-complete-phase-7-implementation |
 
 ### Test Examples (Write First!)
 
@@ -2003,7 +2003,7 @@ test('parse real heartbeat from captured fixture', () {
 - [x] Phase 4: Message Routing & Parser Core - COMPLETE (100%)
 - [x] Phase 5: Core Message Types (Heartbeat, Initialization) - ✅ COMPLETE
 - [x] Phase 6: Position Messages (Ownship, Traffic) - ✅ COMPLETE (32/32 tasks, 19 tests)
-- [ ] Phase 7: Additional Messages (HAT, Uplink, Geo Altitude, Pass-Through) - NOT STARTED
+- [x] Phase 7: Additional Messages (HAT, Uplink, Geo Altitude, Pass-Through) - ✅ COMPLETE (26/26 tasks, 13 tests, 75 total)
 - [ ] Phase 8: Stream Transport Layer - NOT STARTED
 - [ ] Phase 9: Smart Data Capture Utility - NOT STARTED
 - [ ] Phase 10: CLI Example & Playback Testing - NOT STARTED
@@ -2015,7 +2015,7 @@ test('parse real heartbeat from captured fixture', () {
 | Milestone | Phases | Status | Target |
 |-----------|--------|--------|--------|
 | **M1: Core Parsing** | 1-4 | COMPLETE (4/4 phases = 100%) | CRC, framing, routing |
-| **M2: Message Types** | 5-7 | IN PROGRESS (2/3 phases = 67%) | All 9 message types |
+| **M2: Message Types** | 5-7 | ✅ COMPLETE (3/3 phases = 100%) | All 9 message types |
 | **M3: Transport & Tools** | 8-10 | Not Started | Stream, capture, examples |
 | **M4: Documentation & Validation** | 11-12 | Not Started | Docs, integration tests |
 
@@ -2161,6 +2161,39 @@ During implementation, footnote tags from task Notes are added here with details
   - `file:docs/plans/002-gdl90-receiver-parser/tasks/phase-6-position-messages/execution.log.md`
   - Documents full TDD cycle (SETUP/RED/GREEN/REFACTOR)
   - Includes test results, coverage, quality gate outputs
+
+### Phase 7: Additional Messages (HAT, Uplink, Geo Altitude, Pass-Through)
+
+[^26]: Task 7.1-7.13 (T001) - Model field additions
+  - `file:packages/skyecho_gdl90/lib/src/models/gdl90_message.dart`
+  - Added 6 Phase 7 fields: `timeOfReception80ns?`, `geoAltitudeFeet?`, `verticalWarning?`, `vfomMetersRaw?`, `basicReportPayload?`, `longReportPayload?`
+  - Added 2 computed properties: `timeOfReceptionSeconds`, `vfomMeters` (null-safe VFOM handling)
+  - Total +69 lines added to model
+
+[^27]: Task 7.9-7.12 (T012-T015) - Parser method implementations
+  - `function:packages/skyecho_gdl90/lib/src/parser.dart:_parseHAT`
+  - `function:packages/skyecho_gdl90/lib/src/parser.dart:_parseUplink`
+  - `function:packages/skyecho_gdl90/lib/src/parser.dart:_parseOwnshipGeoAltitude`
+  - `function:packages/skyecho_gdl90/lib/src/parser.dart:_parsePassThrough`
+  - 4 new parsers totaling +236 lines
+  - All parsers return Gdl90ErrorEvent on errors (never throw)
+
+[^28]: Task 7.12 (T017) - Routing table updates
+  - `file:packages/skyecho_gdl90/lib/src/parser.dart`
+  - Added 5 switch case branches: 0x07, 0x09, 0x0B, 0x1E, 0x1F
+  - Updated default case hint message with complete supported message ID list
+
+[^29]: Task 7.9, 7.10 (T012, T013) - Security constants
+  - `builtin:packages/skyecho_gdl90/lib/src/parser.dart:_HAT_INVALID`
+  - `builtin:packages/skyecho_gdl90/lib/src/parser.dart:_MAX_UPLINK_PAYLOAD_BYTES`
+  - 0x8000 invalid HAT marker prevents false negative heights
+  - 1KB Uplink payload limit prevents memory bomb DoS attacks
+
+[^30]: Task 7.1-7.8 (T003-T010b) - Test suite expansion
+  - `file:packages/skyecho_gdl90/test/unit/parser_test.dart`
+  - Added 13 new tests (+400 lines): 2 HAT, 5 Uplink (incl. security), 5 Geo Altitude (incl. VFOM edge cases), 4 Pass-Through (incl. routing integration)
+  - Total 75 tests passing (62 baseline + 13 Phase 7)
+  - All tests include comprehensive Test Doc blocks (5 required fields)
 
 ---
 

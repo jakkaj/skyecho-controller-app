@@ -948,6 +948,435 @@ void main() {
         expect(errorEvent.reason, contains('traffic'));
         expect(errorEvent.hint, isNotNull);
       });
+
+      // ═══════════════════════════════════════════════════════════════════
+      // Phase 7: Additional Messages (HAT, Uplink, Geo Altitude, Pass-Through)
+      // ═══════════════════════════════════════════════════════════════════
+
+      // T003: HAT valid value (16-bit signed feet)
+      test('given_hat_valid_value_when_parsing_then_extracts_feet', () {
+        /*
+        Test Doc:
+        - Why: Validates HAT message parsing for terrain clearance data
+        - Contract: _parseHAT returns heightAboveTerrainFeet = 1500
+        - Usage Notes: 16-bit signed MSB-first (0x05DC = 1500 feet)
+        - Quality Contribution: Ensures accurate terrain clearance alerts
+        - Worked Example: [0x09, 0x05, 0xDC] → heightAboveTerrainFeet=1500
+        */
+
+        // Arrange - HAT = 1500 feet (0x05DC MSB-first)
+        final frame = Uint8List.fromList([
+          0x09, // Message ID (9 = HAT)
+          0x05, 0xDC, // 1500 feet MSB-first
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.messageType, equals(Gdl90MessageType.hat));
+        expect(msg.heightAboveTerrainFeet, equals(1500));
+      });
+
+      // T004: HAT invalid marker (0x8000 → null)
+      test('given_hat_invalid_marker_when_parsing_then_returns_null', () {
+        /*
+        Test Doc:
+        - Why: Validates invalid HAT handling prevents bogus terrain clearance
+        - Contract: _parseHAT checks 0x8000 BEFORE sign conversion, returns null
+        - Usage Notes: 0x8000 is special invalid marker per GDL90 spec
+        - Quality Contribution: Prevents false terrain warnings
+        - Worked Example: [0x09, 0x80, 0x00] → heightAboveTerrainFeet=null
+        */
+
+        // Arrange - HAT invalid marker
+        final frame = Uint8List.fromList([
+          0x09, // Message ID
+          0x80, 0x00, // Invalid marker (0x8000)
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.messageType, equals(Gdl90MessageType.hat));
+        expect(msg.heightAboveTerrainFeet, isNull);
+      });
+
+      // T005: Uplink TOR extraction (24-bit LSB-first)
+      test('given_uplink_data_when_parsing_then_extracts_tor', () {
+        /*
+        Test Doc:
+        - Why: Validates Uplink TOR extraction for weather data timestamping
+        - Contract: _parseUplink extracts 24-bit LSB-first TOR = 1000
+        - Usage Notes: TOR in 80ns units, LSB-first byte order
+        - Quality Contribution: Enables temporal ordering of weather updates
+        - Worked Example: [0xE8, 0x03, 0x00] → TOR=1000 (80ns units)
+        */
+
+        // Arrange - Uplink with TOR = 1000 (0x0003E8 LSB-first = 0xE8, 0x03, 0x00)
+        final frame = Uint8List.fromList([
+          0x07, // Message ID (7 = Uplink)
+          0xE8, 0x03, 0x00, // TOR: 1000 in 80ns units (LSB-first)
+          ...List.filled(432, 0xFF), // 432-byte UAT payload
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.messageType, equals(Gdl90MessageType.uplinkData));
+        expect(msg.timeOfReception80ns, equals(1000));
+      });
+
+      // T006: Uplink 432-byte payload storage
+      test('given_uplink_data_when_parsing_then_stores_payload', () {
+        /*
+        Test Doc:
+        - Why: Validates Uplink payload storage (no FIS-B decode per spec non-goal #8)
+        - Contract: _parseUplink stores raw 432-byte payload in uplinkPayload field
+        - Usage Notes: Payload is variable-length, typically 432 bytes
+        - Quality Contribution: Preserves raw weather data for future decoding
+        - Worked Example: 3-byte TOR + 432-byte payload → uplinkPayload.length=432
+        */
+
+        // Arrange - Uplink with 432-byte payload
+        final expectedPayload = Uint8List.fromList(
+            List.generate(432, (i) => (i % 256))); // Patterned test data
+        final frame = Uint8List.fromList([
+          0x07, // Message ID
+          0xE8, 0x03, 0x00, // TOR: 1000
+          ...expectedPayload, // 432-byte UAT payload
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.uplinkPayload!.length, equals(432));
+        // Verify payload content (first 10 bytes)
+        expect(msg.uplinkPayload!.sublist(0, 10),
+            equals(expectedPayload.sublist(0, 10)));
+      });
+
+      // T006a: Uplink oversized payload rejection (security)
+      test(
+          'given_uplink_oversized_payload_when_parsing_then_returns_error_event',
+          () {
+        /*
+        Test Doc:
+        - Why: Validates 1KB security limit prevents memory bomb DoS attacks
+        - Contract: _parseUplink rejects payloads >1027 bytes (3 TOR + 1024 max)
+        - Usage Notes: Security measure per Insight #1 (Critical Insights Discussion)
+        - Quality Contribution: Prevents malicious/corrupt frames from allocating excessive memory
+        - Worked Example: 3-byte TOR + 1025-byte payload → Gdl90ErrorEvent
+        */
+
+        // Arrange - Uplink with 1025-byte payload (exceeds 1KB limit)
+        final frame = Uint8List.fromList([
+          0x07, // Message ID
+          0xE8, 0x03, 0x00, // TOR: 1000
+          ...List.filled(1025, 0xFF), // 1025-byte payload (exceeds 1KB limit)
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90ErrorEvent>());
+        final errorEvent = event as Gdl90ErrorEvent;
+        expect(errorEvent.reason, contains('1KB'));
+        expect(
+            errorEvent.reason.contains('security') ||
+                errorEvent.reason.contains('limit'),
+            isTrue);
+      });
+
+      // T007: Geo Altitude 5-ft resolution
+      test('given_geo_altitude_when_parsing_then_applies_5ft_scaling', () {
+        /*
+        Test Doc:
+        - Why: Validates Geo Altitude 5-ft resolution formula (different from 25-ft Ownship)
+        - Contract: _parseOwnshipGeoAltitude applies raw * 5 formula
+        - Usage Notes: 16-bit signed MSB-first, 5-ft resolution (not 25-ft like Ownship altitude)
+        - Quality Contribution: Ensures precise geometric altitude for vertical navigation
+        - Worked Example: [0x01, 0xF4] = 500 → 500 * 5 = 2500 feet
+        */
+
+        // Arrange - Geo Altitude = 2500 feet (500 raw * 5)
+        final frame = Uint8List.fromList([
+          0x0B, // Message ID (11 = Ownship Geo Alt)
+          0x01, 0xF4, // Altitude: 500 (500 * 5 = 2500 feet) MSB-first
+          0x00, 0x64, // Vertical metrics: warning=0, VFOM=100
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.messageType, equals(Gdl90MessageType.ownshipGeoAltitude));
+        expect(msg.geoAltitudeFeet, equals(2500));
+      });
+
+      // T008: Geo Altitude vertical metrics (warning + VFOM)
+      test('given_geo_altitude_when_parsing_then_extracts_vertical_metrics',
+          () {
+        /*
+        Test Doc:
+        - Why: Validates vertical metrics extraction (warning flag + 15-bit VFOM)
+        - Contract: _parseOwnshipGeoAltitude extracts bit 15 (warning) and bits 14-0 (VFOM)
+        - Usage Notes: 16-bit MSB-first field, bit 15=warning, bits 14-0=VFOM in meters
+        - Quality Contribution: Provides vertical accuracy metrics for navigation quality assessment
+        - Worked Example: [0x00, 0x64] = 0x0064 → warning=false, VFOM=100 meters
+        */
+
+        // Arrange - Vertical metrics: no warning, VFOM=100m
+        final frame = Uint8List.fromList([
+          0x0B, // Message ID
+          0x01, 0xF4, // Altitude: 2500 feet
+          0x00, 0x64, // Vertical metrics: 0x0064 → warning=0, VFOM=100
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.verticalWarning, isFalse);
+        expect(msg.vfomMetersRaw, equals(100));
+        expect(msg.vfomMeters, equals(100)); // Computed property
+      });
+
+      // T008a: Geo Altitude VFOM special value 0x7FFF (not available)
+      test(
+          'given_geo_altitude_vfom_not_available_when_parsing_then_returns_0x7FFF',
+          () {
+        /*
+        Test Doc:
+        - Why: Validates VFOM special value 0x7FFF (not available) per Insight #4
+        - Contract: _parseOwnshipGeoAltitude preserves raw value 0x7FFF, computed property returns null
+        - Usage Notes: 0x7FFF indicates VFOM measurement not available
+        - Quality Contribution: Prevents treating "not available" as actual 32767m measurement
+        - Worked Example: [0x7F, 0xFF] → vfomMetersRaw=0x7FFF, vfomMeters=null
+        */
+
+        // Arrange - VFOM not available (0x7FFF)
+        final frame = Uint8List.fromList([
+          0x0B, // Message ID
+          0x01, 0xF4, // Altitude: 2500 feet
+          0x7F, 0xFF, // Vertical metrics: 0x7FFF (not available)
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.vfomMetersRaw, equals(0x7FFF));
+        expect(msg.vfomMeters, isNull); // Computed property returns null
+      });
+
+      // T008b: Geo Altitude VFOM special value 0x7EEE (exceeds 32766m)
+      test(
+          'given_geo_altitude_vfom_exceeds_max_when_parsing_then_returns_0x7EEE',
+          () {
+        /*
+        Test Doc:
+        - Why: Validates VFOM special value 0x7EEE (exceeds max) per Insight #4
+        - Contract: _parseOwnshipGeoAltitude preserves raw value 0x7EEE, computed property returns null
+        - Usage Notes: 0x7EEE indicates VFOM exceeds 32766 meters
+        - Quality Contribution: Prevents treating "exceeds max" as actual 32494m measurement
+        - Worked Example: [0x7E, 0xEE] → vfomMetersRaw=0x7EEE, vfomMeters=null
+        */
+
+        // Arrange - VFOM exceeds max (0x7EEE)
+        final frame = Uint8List.fromList([
+          0x0B, // Message ID
+          0x01, 0xF4, // Altitude: 2500 feet
+          0x7E, 0xEE, // Vertical metrics: 0x7EEE (exceeds 32766m)
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.vfomMetersRaw, equals(0x7EEE));
+        expect(msg.vfomMeters, isNull); // Computed property returns null
+      });
+
+      // T008c: Geo Altitude with vertical warning flag set (bit 15 = 1)
+      test('given_geo_altitude_vertical_warning_when_parsing_then_flag_is_true',
+          () {
+        /*
+        Test Doc:
+        - Why: Validates vertical warning flag extraction when bit 15 is set (Code Review V1 fix)
+        - Contract: _parseOwnshipGeoAltitude sets verticalWarning=true when bit 15=1
+        - Usage Notes: Metrics word 0x8001 → bit 15=1 (warning), bits 14-0=1 (VFOM)
+        - Quality Contribution: Prevents regressions in safety-critical warning flag extraction; closes coverage gap identified in review
+        - Worked Example: [0x80, 0x01] → verticalWarning=true, vfomMetersRaw=1
+        */
+
+        // Arrange - Vertical metrics with warning flag set (bit 15 = 1)
+        final frame = Uint8List.fromList([
+          0x0B, // Message ID (11 = Ownship Geo Alt)
+          0x01, 0xF4, // Altitude: 2500 feet (500 * 5)
+          0x80, 0x01, // Vertical metrics: 0x8001 → warning=true, VFOM=1m
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.verticalWarning, isTrue); // Critical assertion for bit 15
+        expect(msg.vfomMetersRaw, equals(1)); // Verify VFOM extraction
+        expect(msg.vfomMeters, equals(1)); // Verify computed property
+      });
+
+      // T009: Pass-Through Basic (ID 30, 18-byte payload)
+      test('given_passthrough_basic_when_parsing_then_extracts_tor_and_payload',
+          () {
+        /*
+        Test Doc:
+        - Why: Validates Pass-Through Basic parsing for UAT basic report messages
+        - Contract: _parsePassThrough extracts TOR + 18-byte payload to basicReportPayload
+        - Usage Notes: Unified method for ID 30 (basic) and 31 (long), differentiated by payload field
+        - Quality Contribution: Enables UAT traffic report processing
+        - Worked Example: ID 0x1E + TOR + 18 bytes → basicReportPayload.length=18
+        */
+
+        // Arrange - Pass-Through Basic (ID 30)
+        final frame = Uint8List.fromList([
+          0x1E, // Message ID (30 = Basic)
+          0xE8, 0x03, 0x00, // TOR: 1000 LSB-first
+          ...List.filled(18, 0xAA), // 18-byte UAT basic report
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.messageType, equals(Gdl90MessageType.basicReport));
+        expect(msg.timeOfReception80ns, equals(1000));
+        expect(msg.basicReportPayload!.length, equals(18));
+      });
+
+      // T010: Pass-Through Long (ID 31, 34-byte payload)
+      test('given_passthrough_long_when_parsing_then_extracts_tor_and_payload',
+          () {
+        /*
+        Test Doc:
+        - Why: Validates Pass-Through Long parsing for UAT long report messages
+        - Contract: _parsePassThrough extracts TOR + 34-byte payload to longReportPayload
+        - Usage Notes: Same unified method as Basic, but populates different payload field
+        - Quality Contribution: Enables extended UAT traffic report processing
+        - Worked Example: ID 0x1F + TOR + 34 bytes → longReportPayload.length=34
+        */
+
+        // Arrange - Pass-Through Long (ID 31)
+        final frame = Uint8List.fromList([
+          0x1F, // Message ID (31 = Long)
+          0xE8, 0x03, 0x00, // TOR: 1000 LSB-first
+          ...List.filled(34, 0xBB), // 34-byte UAT long report
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.messageType, equals(Gdl90MessageType.longReport));
+        expect(msg.timeOfReception80ns, equals(1000));
+        expect(msg.longReportPayload!.length, equals(34));
+      });
+
+      // T010a: Unknown Phase 7-range message ID (integration test)
+      test(
+          'given_unknown_phase7_message_id_when_parsing_then_returns_ignored_or_error_event',
+          () {
+        /*
+        Test Doc:
+        - Why: Validates routing table completeness for Phase 7 message ID range (per Insight #5)
+        - Contract: Parser handles unassigned IDs gracefully (0x08 is unassigned)
+        - Usage Notes: Integration test catches routing gaps during refactoring
+        - Quality Contribution: Prevents silent failures when routing table is incomplete
+        - Worked Example: ID 0x08 (unassigned) → Gdl90ErrorEvent with actionable hint
+        */
+
+        // Arrange - Unknown message ID 0x08 (unassigned in Phase 7 range)
+        final frame = Uint8List.fromList([
+          0x08, // Unknown ID (between HAT 0x09 and Ownship 0x0A)
+          0x00, 0x00, 0x00, // Dummy payload
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90ErrorEvent>());
+        final errorEvent = event as Gdl90ErrorEvent;
+        expect(errorEvent.reason, contains('Unknown message ID'));
+        expect(errorEvent.hint, isNotNull);
+      });
+
+      // T010b: Uplink end-to-end with upper bound (integration test)
+      test('given_uplink_max_payload_when_parsing_then_accepts', () {
+        /*
+        Test Doc:
+        - Why: Validates Uplink security limit in end-to-end scenario (per Insight #5)
+        - Contract: Parser accepts 1027-byte frame (3 TOR + 1024 payload) but rejects 1028+
+        - Usage Notes: Integration test verifies routing + validation boundary
+        - Quality Contribution: Confirms 1KB security limit works in practice
+        - Worked Example: 3 TOR + 1024 payload = 1027 bytes → Gdl90DataEvent
+        */
+
+        // Arrange - Uplink with exactly 1024-byte payload (max allowed)
+        final frame = Uint8List.fromList([
+          0x07, // Message ID
+          0xE8, 0x03, 0x00, // TOR: 1000
+          ...List.filled(1024, 0xFF), // 1024-byte payload (exactly at limit)
+          0x00, 0x00, // CRC
+        ]);
+
+        // Act
+        final event = Gdl90Parser.parse(frame);
+
+        // Assert
+        expect(event, isA<Gdl90DataEvent>());
+        final msg = (event as Gdl90DataEvent).message;
+        expect(msg.uplinkPayload!.length, equals(1024));
+      });
     });
   });
 }

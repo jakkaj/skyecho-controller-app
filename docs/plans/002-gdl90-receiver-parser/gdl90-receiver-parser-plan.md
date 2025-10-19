@@ -1176,19 +1176,19 @@ test('heartbeat message count extraction', () {
 
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
-| 6.1 | [ ] | Write test for semicircle to degrees conversion | Known semicircle value → known degrees | - | Per Critical Discovery 03 |
-| 6.2 | [ ] | Write test for positive latitude (northern hemisphere) | Lat semicircle 1728026 → 37.0835° | - | Test vector |
-| 6.3 | [ ] | Write test for negative latitude (southern hemisphere) | Negative semicircle → negative degrees | - | Sign bit handling |
-| 6.4 | [ ] | Write test for altitude encoding (25-ft steps, -1000 offset) | Altitude field 140 → 2500 feet | - | (140 * 25) - 1000 |
-| 6.5 | [ ] | Write test for invalid altitude (0xFFF) | 0xFFF → null altitude | - | Invalid altitude marker |
-| 6.6 | [ ] | Write test for callsign extraction and trimming | "N12345  " → "N12345" (trim padding) | - | 8-byte ASCII field |
-| 6.7 | [ ] | Write test for velocity encoding | 12-bit unsigned knots, 0xFFF = unavailable | - | Horizontal velocity |
-| 6.8 | [ ] | Write test for track/heading angle | 8-bit angular (360/256 deg per LSB) | - | 0-255 → 0.0-358.6° |
-| 6.9 | [ ] | Write test for traffic alert flag | Status byte bit 4 (traffic alert) | - | Boolean flag |
-| 6.10 | [ ] | Implement _toSigned() helper | 24-bit two's complement to signed int | - | Copy from research |
-| 6.11 | [ ] | Implement parseOwnship() method | Extracts all 27-byte fields | - | ID 10 |
-| 6.12 | [ ] | Implement parseTraffic() method | Same parsing logic as ownship | - | ID 20 (same structure) |
-| 6.13 | [ ] | Run all ownship/traffic tests | All tests pass (100% pass rate) | - | Green phase |
+| 6.1 | [x] | Write test for semicircle to degrees conversion | Known semicircle value → known degrees | [📋](tasks/phase-6-position-messages/execution.log.md#t001-verify-gdl90message-fields-exist) | Completed · Model fields verified + helpers implemented [^16][^17][^18] |
+| 6.2 | [x] | Write test for positive latitude (northern hemisphere) | Lat semicircle 1728026 → 37.0835° | [📋](tasks/phase-6-position-messages/execution.log.md#t003-t021-write-19-failing-tests) | Completed · RED phase tests written [^19] |
+| 6.3 | [x] | Write test for negative latitude (southern hemisphere) | Negative semicircle → negative degrees | [📋](tasks/phase-6-position-messages/execution.log.md#t003-t021-write-19-failing-tests) | Completed · RED phase tests written [^19] |
+| 6.4 | [x] | Write test for altitude encoding (25-ft steps, -1000 offset) | Altitude field 140 → 2500 feet | [📋](tasks/phase-6-position-messages/execution.log.md#t003-t021-write-19-failing-tests) | Completed · RED phase tests written [^19] |
+| 6.5 | [x] | Write test for invalid altitude (0xFFF) | 0xFFF → null altitude | [📋](tasks/phase-6-position-messages/execution.log.md#t003-t021-write-19-failing-tests) | Completed · RED phase tests written [^19] |
+| 6.6 | [x] | Write test for callsign extraction and trimming | "N12345  " → "N12345" (trim padding) | [📋](tasks/phase-6-position-messages/execution.log.md#t003-t021-write-19-failing-tests) | Completed · RED phase tests written [^19] |
+| 6.7 | [x] | Write test for velocity encoding | 12-bit unsigned knots, 0xFFF = unavailable | [📋](tasks/phase-6-position-messages/execution.log.md#t003-t021-write-19-failing-tests) | Completed · RED phase tests written [^19] |
+| 6.8 | [x] | Write test for track/heading angle | 8-bit angular (360/256 deg per LSB) | [📋](tasks/phase-6-position-messages/execution.log.md#t003-t021-write-19-failing-tests) | Completed · RED phase tests written [^19] |
+| 6.9 | [x] | Write test for traffic alert flag | Status byte bit 4 (traffic alert) | [📋](tasks/phase-6-position-messages/execution.log.md#t003-t021-write-19-failing-tests) | Completed · RED phase tests written [^19] |
+| 6.10 | [x] | Implement _toSigned() helper | 24-bit two's complement to signed int | [📋](tasks/phase-6-position-messages/execution.log.md#t002-implement-generic-_tosignedvalue-bits-helper) | Completed · Generic helper for any bit width [^17] |
+| 6.11 | [x] | Implement parseOwnship() method | Extracts all 27-byte fields | [📋](tasks/phase-6-position-messages/execution.log.md#t023-implement-_parseownship-method) | Completed · Ownship parser + routing [^20][^22] |
+| 6.12 | [x] | Implement parseTraffic() method | Same parsing logic as ownship | [📋](tasks/phase-6-position-messages/execution.log.md#t024-implement-_parsetraffic-method) | Completed · Traffic parser + routing [^21][^22] |
+| 6.13 | [x] | Run all ownship/traffic tests | All tests pass (100% pass rate) | [📋](tasks/phase-6-position-messages/execution.log.md#t027-verify-all-tests-pass-green-gate) | Completed · 32/32 tests passing + quality gates [^23][^24][^25] |
 
 ### Test Examples (Write First!)
 
@@ -2002,7 +2002,7 @@ test('parse real heartbeat from captured fixture', () {
 - [x] Phase 3: Byte Framing & Escaping - COMPLETE
 - [x] Phase 4: Message Routing & Parser Core - COMPLETE (100%)
 - [x] Phase 5: Core Message Types (Heartbeat, Initialization) - ✅ COMPLETE
-- [ ] Phase 6: Position Messages (Ownship, Traffic) - NOT STARTED
+- [x] Phase 6: Position Messages (Ownship, Traffic) - ✅ COMPLETE (32/32 tasks, 19 tests)
 - [ ] Phase 7: Additional Messages (HAT, Uplink, Geo Altitude, Pass-Through) - NOT STARTED
 - [ ] Phase 8: Stream Transport Layer - NOT STARTED
 - [ ] Phase 9: Smart Data Capture Utility - NOT STARTED
@@ -2015,7 +2015,7 @@ test('parse real heartbeat from captured fixture', () {
 | Milestone | Phases | Status | Target |
 |-----------|--------|--------|--------|
 | **M1: Core Parsing** | 1-4 | COMPLETE (4/4 phases = 100%) | CRC, framing, routing |
-| **M2: Message Types** | 5-7 | Not Started | All 9 message types |
+| **M2: Message Types** | 5-7 | IN PROGRESS (2/3 phases = 67%) | All 9 message types |
 | **M3: Transport & Tools** | 8-10 | Not Started | Stream, capture, examples |
 | **M4: Documentation & Validation** | 11-12 | Not Started | Docs, integration tests |
 
@@ -2109,6 +2109,58 @@ During implementation, footnote tags from task Notes are added here with details
   - `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_all_status_flags_when_parsing_then_extracts_all_10_flags`
   - `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_heartbeat_boundary_timestamps_when_parsing_then_handles_0_and_max`
   - `test:packages/skyecho_gdl90/test/unit/parser_test.dart:given_initialization_message_when_parsing_then_stores_audio_fields`
+
+### Phase 6: Position Messages (Ownship, Traffic)
+
+[^16]: Task 6.1 (T001) - Added trafficAlert field to Gdl90Message model
+  - `class:packages/skyecho_gdl90/lib/src/models/gdl90_message.dart:Gdl90Message`
+  - Added missing `trafficAlert?` boolean field (line 117)
+  - All other position fields verified present from Phase 4
+
+[^17]: Task 6.1 (T002) - Implemented generic _toSigned(value, bits) helper
+  - `function:packages/skyecho_gdl90/lib/src/parser.dart:_toSigned`
+  - Generic two's complement sign extension for any bit width
+  - Used for 24-bit lat/lon and 12-bit vertical velocity
+
+[^18]: Task 6.1 (T002a) - Implemented _extractAltitudeFeet() helper
+  - `function:packages/skyecho_gdl90/lib/src/parser.dart:_extractAltitudeFeet`
+  - Checks 0xFFF invalid marker BEFORE applying formula
+  - Prevents altitude precedence trap per Insight #2
+
+[^19]: Task 6.2-6.9 (T003-T022) - Wrote 19 failing tests (RED phase)
+  - `file:packages/skyecho_gdl90/test/unit/parser_test.dart`
+  - Semicircle conversion tests (positive, negative, 4 boundaries)
+  - Field extraction tests (altitude, velocity, callsign, flags)
+  - Integration tests (full messages, error handling)
+
+[^20]: Task 6.11 (T023) - Implemented _parseOwnship() method
+  - `function:packages/skyecho_gdl90/lib/src/parser.dart:_parseOwnship`
+  - Parses 27-byte ownship position report (ID 0x0A)
+  - Extracts lat/lon, altitude, velocity, callsign, flags
+
+[^21]: Task 6.12 (T024) - Implemented _parseTraffic() method
+  - `function:packages/skyecho_gdl90/lib/src/parser.dart:_parseTraffic`
+  - Parses 27-byte traffic position report (ID 0x14)
+  - Same structure as ownship with different messageType
+
+[^22]: Task 6.11-6.12 (T025-T026) - Updated routing table
+  - `file:packages/skyecho_gdl90/lib/src/parser.dart`
+  - Added case 0x0A for ownship
+  - Added case 0x14 for traffic
+
+[^23]: Task 6.13 (T027) - Verified all tests pass (GREEN gate)
+  - All 32 tests passing (13 baseline + 19 new)
+  - 62 total tests across all phases
+
+[^24]: Task 6.13 (T028-T030) - Ran quality gates (REFACTOR phase)
+  - Coverage report generated (62 tests total)
+  - Analyzer: Fixed 4 warnings (unused variables)
+  - Formatter: 2 files formatted
+
+[^25]: Task 6.13 (T031) - Wrote execution log
+  - `file:docs/plans/002-gdl90-receiver-parser/tasks/phase-6-position-messages/execution.log.md`
+  - Documents full TDD cycle (SETUP/RED/GREEN/REFACTOR)
+  - Includes test results, coverage, quality gate outputs
 
 ---
 

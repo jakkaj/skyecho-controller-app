@@ -67,16 +67,20 @@ class Gdl90Parser {
       case 0x02: // Initialization
         return _parseInitialization(messageId, payload);
 
+      case 0x0A: // Ownship Report
+        return _parseOwnship(messageId, payload);
+
+      case 0x14: // Traffic Report
+        return _parseTraffic(messageId, payload);
+
       case 0x07: // Uplink
       case 0x09: // HAT
-      case 0x0A: // Ownship
       case 0x0B: // Ownship Geo Altitude
-      case 0x14: // Traffic
       case 0x1E: // Basic Report
       case 0x1F: // Long Report
         return Gdl90ErrorEvent(
           reason: 'Unsupported message type: 0x${messageId.toRadixString(16)}',
-          hint: 'This message type will be implemented in Phase 6-7',
+          hint: 'This message type will be implemented in Phase 7',
           rawBytes: frame,
         );
 
@@ -89,6 +93,322 @@ class Gdl90Parser {
           rawBytes: frame,
         );
     }
+  }
+
+  /// Converts an unsigned value to signed using two's complement.
+  ///
+  /// Handles any bit width (e.g., 12-bit for vertical velocity, 24-bit for
+  /// lat/lon semicircles). Checks the sign bit and applies two's complement
+  /// conversion if negative.
+  ///
+  /// Per Critical Discovery 03 and Insight #3: Generic helper replaces separate
+  /// _toSigned24() and _toSigned12() methods. Used for:
+  /// - 24-bit semicircle lat/lon conversion (sign bit = bit 23)
+  /// - 12-bit signed vertical velocity (sign bit = bit 11)
+  ///
+  /// Example:
+  /// ```dart
+  /// // 24-bit negative latitude (southern hemisphere)
+  /// final lat24 = 0xF00000; // Sign bit set
+  /// final latSigned = _toSigned(lat24, 24); // Returns negative value
+  ///
+  /// // 12-bit negative vertical velocity (descent)
+  /// final vvel12 = 0x810; // -16 in 12-bit two's complement
+  /// final vvelSigned = _toSigned(vvel12, 12); // Returns -16
+  /// ```
+  ///
+  /// Parameters:
+  /// - [value]: Unsigned integer value to convert
+  /// - [bits]: Bit width of the field (e.g., 12, 24)
+  ///
+  /// Returns: Signed integer after two's complement conversion
+  static int _toSigned(int value, int bits) {
+    final signBit = 1 << (bits - 1);
+    final mask = (1 << bits) - 1;
+    value &= mask;
+    return (value & signBit) != 0 ? value - (1 << bits) : value;
+  }
+
+  /// Invalid altitude marker (12-bit field)
+  static const int _ALTITUDE_INVALID = 0xFFF;
+
+  /// Extracts altitude from 12-bit raw value with offset and scaling.
+  ///
+  /// Per Insight #2: Checks invalid marker (0xFFF) BEFORE applying formula
+  /// to prevent altitude formula precedence trap. Without this check, 0xFFF
+  /// would be interpreted as 101,375 feet instead of null (no GPS fix).
+  ///
+  /// Formula: (raw12bit * 25) - 1000 feet MSL
+  /// - Range: -1000 to 101,350 feet (25-foot resolution)
+  /// - Invalid marker: 0xFFF → null (no altitude data available)
+  ///
+  /// Example:
+  /// ```dart
+  /// final alt1 = _extractAltitudeFeet(140); // Returns 2500 feet
+  /// final alt2 = _extractAltitudeFeet(0xFFF); // Returns null (invalid)
+  /// final alt3 = _extractAltitudeFeet(40); // Returns 0 feet (sea level)
+  /// final alt4 = _extractAltitudeFeet(0); // Returns -1000 feet (below sea level)
+  /// ```
+  ///
+  /// Parameters:
+  /// - [raw12bit]: 12-bit altitude value from GDL90 message
+  ///
+  /// Returns:
+  /// - Non-null altitude in feet MSL if valid
+  /// - null if invalid marker (0xFFF)
+  static int? _extractAltitudeFeet(int raw12bit) {
+    if (raw12bit == _ALTITUDE_INVALID) {
+      return null; // Check BEFORE formula application
+    }
+    return (raw12bit * 25) - 1000;
+  }
+
+  /// Parse ownship report message (ID 0x0A).
+  ///
+  /// Extracts 27-byte position report for own aircraft including GPS coordinates,
+  /// altitude, velocity, heading, and identification.
+  ///
+  /// Per Critical Discovery 03: Lat/lon encoded as 24-bit signed semicircles
+  /// with scaling factor 180/2^23 degrees. Uses _toSigned(value, 24) for sign
+  /// extension.
+  ///
+  /// Per Insight #2: Uses _extractAltitudeFeet() helper to check invalid marker
+  /// (0xFFF) before applying altitude formula.
+  ///
+  /// Payload structure (27 bytes):
+  /// - Byte 0: Status (bit 4=trafficAlert, bit 3=airborne)
+  /// - Bytes 1-3: ICAO address (24-bit participant address)
+  /// - Bytes 4-6: Latitude (24-bit signed semicircles, MSB-first)
+  /// - Bytes 7-9: Longitude (24-bit signed semicircles, MSB-first)
+  /// - Bytes 10-11: Altitude (12-bit) + Misc nibble
+  /// - Byte 12: NIC/NACp
+  /// - Bytes 13-14: Horizontal velocity (12-bit unsigned)
+  /// - Bytes 14-15: Vertical velocity (12-bit signed, spans nibble boundary)
+  /// - Byte 16: Track/heading (8-bit angular)
+  /// - Byte 17: Emitter category
+  /// - Bytes 18-25: Callsign (8 ASCII bytes, right-padded with spaces)
+  /// - Byte 26: Emergency/priority code
+  ///
+  /// Returns [Gdl90DataEvent] with populated ownship fields, or [Gdl90ErrorEvent]
+  /// if payload is truncated.
+  static Gdl90Event _parseOwnship(int messageId, Uint8List payload) {
+    assert(messageId == 0x0A,
+        'Expected ownship message ID 0x0A, got 0x${messageId.toRadixString(16)}');
+
+    // Validate payload length
+    if (payload.length < 27) {
+      return Gdl90ErrorEvent(
+        reason:
+            'Truncated ownship message: expected 27 bytes, got ${payload.length}',
+        hint:
+            'Ownship payload: [status, addr(3), lat(3), lon(3), alt(2), misc, nic, vel(2), vvel(2), track, emitter, callsign(8), emergency]',
+      );
+    }
+
+    int offset = 0;
+
+    // Status byte: bit 4 = traffic alert, bit 3 = airborne
+    final status = payload[offset++];
+    final trafficAlert = (status & 0x10) != 0; // bit 4
+    final airborne = (status & 0x08) != 0; // bit 3
+
+    // ICAO address (24-bit, 3 bytes, MSB-first)
+    final icaoAddress = (payload[offset] << 16) |
+        (payload[offset + 1] << 8) |
+        payload[offset + 2];
+    offset += 3;
+
+    // Latitude (24-bit signed semicircles, MSB-first)
+    final lat24 = (payload[offset] << 16) |
+        (payload[offset + 1] << 8) |
+        payload[offset + 2];
+    offset += 3;
+    final latSigned = _toSigned(lat24, 24);
+    final latitude = latSigned * (180.0 / (1 << 23)); // Semicircle to degrees
+
+    // Longitude (24-bit signed semicircles, MSB-first)
+    final lon24 = (payload[offset] << 16) |
+        (payload[offset + 1] << 8) |
+        payload[offset + 2];
+    offset += 3;
+    final lonSigned = _toSigned(lon24, 24);
+    final longitude = lonSigned * (180.0 / (1 << 23));
+
+    // Altitude (12-bit) + Misc nibble
+    // Byte 10: high 8 bits of altitude (dd)
+    // Byte 11: low 4 bits of altitude (high nibble dm) + misc nibble (low nibble)
+    final dd = payload[offset++];
+    final dm = payload[offset++];
+    final altitudeRaw = ((dd << 4) | (dm >> 4)) & 0xFFF;
+    final altitudeFeet = _extractAltitudeFeet(altitudeRaw); // Uses helper
+
+    // Misc nibble (low 4 bits of dm) - contains airborne bit (bit 3)
+    // Note: airborne already extracted from status byte above
+
+    // NIC/NACp (byte 12) - not extracted per non-goals
+    offset++; // Skip NIC/NACp byte
+
+    // Horizontal velocity (12-bit unsigned, spans 2 bytes)
+    // Byte 13: high 8 bits (hh)
+    // Byte 14: low 4 bits (high nibble of hv)
+    final hh = payload[offset++];
+    final hv = payload[offset++];
+    final horizRaw = ((hh << 4) | (hv >> 4)) & 0xFFF;
+    final horizontalVelocityKt = (horizRaw == 0xFFF) ? null : horizRaw;
+
+    // Vertical velocity (12-bit signed, low nibble of hv + byte 15)
+    final vv = payload[offset++];
+    final vertRaw = (((hv & 0x0F) << 8) | vv) & 0xFFF;
+    int? verticalVelocityFpm;
+    if (vertRaw == 0x800) {
+      verticalVelocityFpm =
+          null; // Invalid marker (check BEFORE sign extension)
+    } else {
+      final vertSigned = _toSigned(vertRaw, 12);
+      verticalVelocityFpm = vertSigned * 64; // 64 fpm per LSB
+    }
+
+    // Track/heading (8-bit angular)
+    final trackRaw = payload[offset++];
+    final trackDegrees = (trackRaw * 360.0 / 256.0).round();
+
+    // Emitter category
+    final emitterCategory = payload[offset++];
+
+    // Callsign (8 ASCII bytes)
+    final callsignBytes = payload.sublist(offset, offset + 8);
+    offset += 8;
+    final callsign = String.fromCharCodes(callsignBytes).trimRight();
+
+    // Emergency/priority code (byte 26) - not extracted per non-goals
+    offset++; // Skip emergency byte
+
+    return Gdl90DataEvent(
+      Gdl90Message(
+        messageType: Gdl90MessageType.ownship,
+        messageId: messageId,
+        trafficAlert: trafficAlert,
+        airborne: airborne,
+        icaoAddress: icaoAddress,
+        latitude: latitude,
+        longitude: longitude,
+        altitudeFeet: altitudeFeet,
+        horizontalVelocityKt: horizontalVelocityKt,
+        verticalVelocityFpm: verticalVelocityFpm,
+        trackDegrees: trackDegrees,
+        emitterCategory: emitterCategory,
+        callsign: callsign,
+      ),
+    );
+  }
+
+  /// Parse traffic report message (ID 0x14).
+  ///
+  /// Identical structure to ownship report (ID 0x0A), but for other aircraft.
+  /// Shares same field extraction logic with different message type enum.
+  ///
+  /// See [_parseOwnship] for complete field documentation.
+  static Gdl90Event _parseTraffic(int messageId, Uint8List payload) {
+    assert(messageId == 0x14,
+        'Expected traffic message ID 0x14, got 0x${messageId.toRadixString(16)}');
+
+    // Validate payload length
+    if (payload.length < 27) {
+      return Gdl90ErrorEvent(
+        reason:
+            'Truncated traffic message: expected 27 bytes, got ${payload.length}',
+        hint:
+            'Traffic payload: [status, addr(3), lat(3), lon(3), alt(2), misc, nic, vel(2), vvel(2), track, emitter, callsign(8), emergency]',
+      );
+    }
+
+    int offset = 0;
+
+    // Status byte: bit 4 = traffic alert, bit 3 = airborne
+    final status = payload[offset++];
+    final trafficAlert = (status & 0x10) != 0; // bit 4
+    final airborne = (status & 0x08) != 0; // bit 3
+
+    // ICAO address (24-bit, 3 bytes, MSB-first)
+    final icaoAddress = (payload[offset] << 16) |
+        (payload[offset + 1] << 8) |
+        payload[offset + 2];
+    offset += 3;
+
+    // Latitude (24-bit signed semicircles, MSB-first)
+    final lat24 = (payload[offset] << 16) |
+        (payload[offset + 1] << 8) |
+        payload[offset + 2];
+    offset += 3;
+    final latSigned = _toSigned(lat24, 24);
+    final latitude = latSigned * (180.0 / (1 << 23));
+
+    // Longitude (24-bit signed semicircles, MSB-first)
+    final lon24 = (payload[offset] << 16) |
+        (payload[offset + 1] << 8) |
+        payload[offset + 2];
+    offset += 3;
+    final lonSigned = _toSigned(lon24, 24);
+    final longitude = lonSigned * (180.0 / (1 << 23));
+
+    // Altitude (12-bit) + Misc nibble
+    final dd = payload[offset++];
+    final dm = payload[offset++];
+    final altitudeRaw = ((dd << 4) | (dm >> 4)) & 0xFFF;
+    final altitudeFeet = _extractAltitudeFeet(altitudeRaw);
+
+    // NIC/NACp (byte 12) - not extracted per non-goals
+    offset++; // Skip NIC/NACp byte
+
+    // Horizontal velocity (12-bit unsigned)
+    final hh = payload[offset++];
+    final hv = payload[offset++];
+    final horizRaw = ((hh << 4) | (hv >> 4)) & 0xFFF;
+    final horizontalVelocityKt = (horizRaw == 0xFFF) ? null : horizRaw;
+
+    // Vertical velocity (12-bit signed)
+    final vv = payload[offset++];
+    final vertRaw = (((hv & 0x0F) << 8) | vv) & 0xFFF;
+    int? verticalVelocityFpm;
+    if (vertRaw == 0x800) {
+      verticalVelocityFpm = null;
+    } else {
+      final vertSigned = _toSigned(vertRaw, 12);
+      verticalVelocityFpm = vertSigned * 64;
+    }
+
+    // Track/heading (8-bit angular)
+    final trackRaw = payload[offset++];
+    final trackDegrees = (trackRaw * 360.0 / 256.0).round();
+
+    // Emitter category
+    final emitterCategory = payload[offset++];
+
+    // Callsign (8 ASCII bytes)
+    final callsignBytes = payload.sublist(offset, offset + 8);
+    offset += 8;
+    final callsign = String.fromCharCodes(callsignBytes).trimRight();
+
+    // Emergency/priority code (byte 26) - not extracted per non-goals
+    offset++; // Skip emergency byte
+
+    return Gdl90DataEvent(
+      Gdl90Message(
+        messageType: Gdl90MessageType.traffic, // Different from ownship
+        messageId: messageId,
+        trafficAlert: trafficAlert,
+        airborne: airborne,
+        icaoAddress: icaoAddress,
+        latitude: latitude,
+        longitude: longitude,
+        altitudeFeet: altitudeFeet,
+        horizontalVelocityKt: horizontalVelocityKt,
+        verticalVelocityFpm: verticalVelocityFpm,
+        trackDegrees: trackDegrees,
+        emitterCategory: emitterCategory,
+        callsign: callsign,
+      ),
+    );
   }
 
   /// Parse heartbeat message (ID 0x00).

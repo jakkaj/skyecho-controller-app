@@ -114,6 +114,7 @@ class Gdl90Message {
   final int? emitterCategory;
   final int? icaoAddress;
   final bool? airborne;
+  final bool? trafficAlert;
 
   // HAT fields (ID 0x09)
   final int? heightAboveTerrainFeet;
@@ -153,6 +154,7 @@ class Gdl90Message {
     this.emitterCategory,
     this.icaoAddress,
     this.airborne,
+    this.trafficAlert,
     // HAT
     this.heightAboveTerrainFeet,
     // Uplink

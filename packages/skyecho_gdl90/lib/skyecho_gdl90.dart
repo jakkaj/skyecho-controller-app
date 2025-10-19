@@ -1,11 +1,10 @@
 /// Pure-Dart library for receiving and parsing GDL90 aviation data streams.
 library;
 
-// Temporary validation export (removed in Phase 2)
-export 'src/hello.dart';
+// CRC validation (Phase 2)
+export 'src/crc.dart';
 
-// Future exports (added in Phases 2-8):
-// export 'src/crc.dart';
+// Future exports (added in Phases 3-8):
 // export 'src/framer.dart';
 // export 'src/parser.dart';
 // export 'src/models/gdl90_message.dart';

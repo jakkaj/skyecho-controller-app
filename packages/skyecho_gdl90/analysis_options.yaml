@@ -48,7 +48,7 @@ linter:
     - use_rethrow_when_possible
 
     # Effective Dart: Design
-    - avoid_classes_with_only_static_members
+    # Note: avoid_classes_with_only_static_members disabled for utility classes like Gdl90Crc
     - prefer_mixin
     - use_to_and_as_if_applicable
     - one_member_abstracts

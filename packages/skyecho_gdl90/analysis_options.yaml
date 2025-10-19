@@ -1,0 +1,61 @@
+# Copied from packages/skyecho/analysis_options.yaml with adjustments for binary protocol parsing
+
+include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    # Effective Dart: Style
+    - camel_case_types
+    - library_names
+    - file_names
+    - library_prefixes
+    - non_constant_identifier_names
+    - constant_identifier_names
+    - directives_ordering
+    - lines_longer_than_80_chars
+
+    # Effective Dart: Documentation
+    - public_member_api_docs
+
+    # Effective Dart: Usage
+    - implementation_imports
+    - avoid_relative_lib_imports
+    - prefer_relative_imports
+    - avoid_types_on_closure_parameters
+    - avoid_init_to_null
+    - avoid_return_types_on_setters
+    - prefer_adjacent_string_concatenation
+    - prefer_collection_literals
+    - prefer_conditional_assignment
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_fields
+    - prefer_final_locals
+    - prefer_is_empty
+    - prefer_is_not_empty
+    - prefer_iterable_whereType
+    - prefer_single_quotes
+    - prefer_spread_collections
+    - unnecessary_const
+    - unnecessary_new
+    - unnecessary_this
+    - use_rethrow_when_possible
+
+    # Effective Dart: Design
+    - avoid_classes_with_only_static_members
+    - prefer_mixin
+    - use_to_and_as_if_applicable
+    - one_member_abstracts
+    - avoid_private_typedef_functions
+
+    # Binary parsing specific (GDL90-specific additions)
+    # Note: prefer_int_literals already enforced by lints/recommended.yaml
+    # Strict type safety critical for binary protocol parsing
+    - avoid_dynamic_calls
+    - prefer_typing_uninitialized_variables

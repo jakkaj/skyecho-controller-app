@@ -1,0 +1,14 @@
+name: skyecho_gdl90
+description: Pure-Dart library for receiving and parsing GDL90 aviation data streams
+version: 0.1.0
+repository: https://github.com/jordanknight/skyecho-controller-app
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+# No runtime dependencies
+dependencies:
+
+dev_dependencies:
+  lints: ^5.0.0  # Dart linting rules
+  test: ^1.24.0  # For validation test in Phase 1

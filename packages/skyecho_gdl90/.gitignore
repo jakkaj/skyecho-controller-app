@@ -1,0 +1,19 @@
+# Dart SDK
+.dart_tool/
+.packages
+build/
+pubspec.lock
+
+# Coverage
+coverage/
+
+# Scratch/temporary code (not committed - promote to test/unit/ when ready)
+# Convention: Use test/scratch/ directory OR scratch_* prefix for experiments
+**/scratch/
+**/scratch_*
+**/*_scratch.*
+
+# IDE
+.idea/
+.vscode/
+*.iml

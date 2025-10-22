@@ -6,8 +6,9 @@ repository: https://github.com/jordanknight/skyecho-controller-app
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
-# No runtime dependencies
+# No runtime dependencies (args only for example scripts)
 dependencies:
+  args: ^2.4.0  # For example CLI scripts
 
 dev_dependencies:
   lints: ^5.0.0  # Dart linting rules

@@ -1460,17 +1460,17 @@ test('Ownship Geo Altitude with vertical metrics', () {
 
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
-| 8.1 | [ ] | Write test for stream initialization | Stream can be created with host/port | - | Mock socket for unit test |
-| 8.2 | [ ] | Write test for start/stop lifecycle | Stream starts and stops cleanly | - | Socket open/close |
-| 8.3 | [ ] | Write test for pause/resume backpressure | Stream pauses and resumes | - | Dart Stream API |
-| 8.4 | [ ] | Write test for UDP datagram reception | Datagrams passed to framer | - | Mock socket emits datagrams |
-| 8.5 | [ ] | Write test for framer-parser integration | Raw UDP → parsed events | - | End-to-end unit test |
-| 8.6 | [ ] | Write test for error event emission | Malformed frame → error event in stream | - | Error handling |
-| 8.7 | [ ] | Write test for socket cleanup on error | Socket closed on exception | - | Resource management |
-| 8.8 | [ ] | Implement Gdl90Stream class | Manages socket, integrates framer/parser | - | StreamController-based |
-| 8.9 | [ ] | Implement start() method | Opens UDP socket, begins emitting events | - | Returns Future<void> |
-| 8.10 | [ ] | Implement stop() method | Closes socket, completes stream | - | Cleanup |
-| 8.11 | [ ] | Run all stream transport tests | All tests pass (100% pass rate) | - | Green phase |
+| 8.1 | [x] | Write test for stream initialization | Stream can be created with host/port | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T001-T002 |
+| 8.2 | [x] | Write test for start/stop lifecycle | Stream starts and stops cleanly | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T003-T004c |
+| 8.3 | [x] | Write test for pause/resume backpressure | Stream pauses and resumes | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T005-T006 |
+| 8.4 | [x] | Write test for UDP datagram reception | Datagrams passed to framer | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T007-T007b |
+| 8.5 | [x] | Write test for framer-parser integration | Raw UDP → parsed events | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T008 |
+| 8.6 | [x] | Write test for error event emission | Malformed frame → error event in stream | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T009 |
+| 8.7 | [x] | Write test for socket cleanup on error | Socket closed on exception | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T010 |
+| 8.8 | [x] | Implement Gdl90Stream class | Manages socket, integrates framer/parser | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T012-T020 |
+| 8.9 | [x] | Implement start() method | Opens UDP socket, begins emitting events | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T013-T015 |
+| 8.10 | [x] | Implement stop() method | Closes socket, completes stream | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T016-T016b |
+| 8.11 | [x] | Run all stream transport tests | All tests pass (100% pass rate) | [📋](tasks/phase-8-stream-transport-layer/tasks.md#tasks) | Completed - see dossier T021 |
 
 ### Test Examples (Write First!)
 
@@ -1600,14 +1600,14 @@ test('stream emits error event for malformed frame', () async {
 
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
-| 9.1 | [ ] | Write validation criteria tracker | Detects GPS acquisition, counts traffic | - | Stateful tracker |
-| 9.2 | [ ] | Write timestamp formatter | Microsecond precision timestamps | - | DateTime.now().microsecondsSinceEpoch |
-| 9.3 | [ ] | Write binary file writer | Writes timestamp + datagram to file | - | Binary format |
-| 9.4 | [ ] | Implement capture_gdl90.dart CLI | Parses args, runs capture loop | - | Uses args package |
-| 9.5 | [ ] | Implement validation tracker | Monitors heartbeat GPS flag, traffic count | - | Stops when criteria met |
-| 9.6 | [ ] | Implement timestamped file writer | Appends [timestamp_us, length, data] to file | - | Binary format |
-| 9.7 | [ ] | Add manual stop option (Ctrl+C) | Graceful shutdown on SIGINT | - | Signal handling |
-| 9.8 | [ ] | Test capture utility manually | Run against real device (if available) | - | Integration test |
+| 9.1 | [SKIP] | Write validation criteria tracker | Detects GPS acquisition, counts traffic | - | Not needed - existing tools sufficient |
+| 9.2 | [SKIP] | Write timestamp formatter | Microsecond precision timestamps | - | Not needed - playback not required |
+| 9.3 | [SKIP] | Write binary file writer | Writes timestamp + datagram to file | - | Not needed - `capture_0x65.dart` covers specific use case |
+| 9.4 | [SKIP] | Implement capture_gdl90.dart CLI | Parses args, runs capture loop | - | Not needed - `real_device_test.dart` provides live monitoring |
+| 9.5 | [SKIP] | Implement validation tracker | Monitors heartbeat GPS flag, traffic count | - | Not needed - manual Ctrl+C sufficient |
+| 9.6 | [SKIP] | Implement timestamped file writer | Appends [timestamp_us, length, data] to file | - | Not needed - no playback requirement |
+| 9.7 | [SKIP] | Add manual stop option (Ctrl+C) | Graceful shutdown on SIGINT | - | Already implemented in existing tools |
+| 9.8 | [SKIP] | Test capture utility manually | Run against real device (if available) | - | Existing tools tested with real device |
 
 ### File Format Specification
 
@@ -1676,14 +1676,14 @@ dart run tool/capture_gdl90.dart --output raw.bin
 
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
-| 10.1 | [ ] | Implement example/main.dart | Connects to device, prints messages | - | User-facing demo |
-| 10.2 | [ ] | Implement tool/extract_fixtures.dart | Parses raw capture, extracts message types | - | Reads timestamped binary |
-| 10.3 | [ ] | Implement tool/playback_fixture.dart | Replays fixture with original timing | - | Uses timestamps |
-| 10.4 | [ ] | Extract gold copy: heartbeat_no_gps.bin | From raw indoor capture | - | Single heartbeat frame |
-| 10.5 | [ ] | Extract gold copy: ownship_with_gps.bin | From raw outdoor capture | - | Ownship with GPS fix |
-| 10.6 | [ ] | Extract gold copy: traffic_multiple_aircraft.bin | From raw outdoor capture | - | 2-3 traffic messages |
-| 10.7 | [ ] | Create fixture documentation | test/fixtures/README.md with descriptions | - | Metadata for fixtures |
-| 10.8 | [ ] | Test playback with unit tests | Fixtures replay correctly | - | Validate fixtures |
+| 10.1 | [SKIP] | Implement example/main.dart | Connects to device, prints messages | - | Already exists as `real_device_test.dart` |
+| 10.2 | [SKIP] | Implement tool/extract_fixtures.dart | Parses raw capture, extracts message types | - | Not needed - Phase 9 skipped (no timestamped format) |
+| 10.3 | [SKIP] | Implement tool/playback_fixture.dart | Replays fixture with original timing | - | Not needed - Phase 9 skipped (no timestamped format) |
+| 10.4 | [SKIP] | Extract gold copy: heartbeat_no_gps.bin | From raw indoor capture | - | Not needed - testing with real device |
+| 10.5 | [SKIP] | Extract gold copy: ownship_with_gps.bin | From raw outdoor capture | - | Not needed - testing with real device |
+| 10.6 | [SKIP] | Extract gold copy: traffic_multiple_aircraft.bin | From raw outdoor capture | - | Not needed - testing with real device |
+| 10.7 | [SKIP] | Create fixture documentation | test/fixtures/README.md with descriptions | - | Not needed - no fixture-based testing |
+| 10.8 | [SKIP] | Test playback with unit tests | Fixtures replay correctly | - | Not needed - Phase 9 skipped |
 
 ### Example CLI Output
 
@@ -2004,11 +2004,11 @@ test('parse real heartbeat from captured fixture', () {
 - [x] Phase 5: Core Message Types (Heartbeat, Initialization) - ✅ COMPLETE
 - [x] Phase 6: Position Messages (Ownship, Traffic) - ✅ COMPLETE (32/32 tasks, 19 tests)
 - [x] Phase 7: Additional Messages (HAT, Uplink, Geo Altitude, Pass-Through) - ✅ COMPLETE (26/26 tasks, 13 tests, 75 total)
-- [ ] Phase 8: Stream Transport Layer - NOT STARTED
-- [ ] Phase 9: Smart Data Capture Utility - NOT STARTED
-- [ ] Phase 10: CLI Example & Playback Testing - NOT STARTED
-- [ ] Phase 11: Documentation (README + docs/how/) - NOT STARTED
-- [ ] Phase 12: Integration Testing & Validation - NOT STARTED
+- [x] Phase 8: Stream Transport Layer - ✅ COMPLETE (21/21 tasks + 24/24 subtask tasks, ForeFlight extension)
+- [SKIP] Phase 9: Smart Data Capture Utility - ⊘ SKIPPED (8/8 tasks - not needed, existing example tools sufficient)
+- [SKIP] Phase 10: CLI Example & Playback Testing - ⊘ SKIPPED (8/8 tasks - depends on Phase 9, real device testing preferred)
+- [DEFER] Phase 11: Documentation (README + docs/how/) - ⏸ DEFERRED (dartdoc coverage excellent, package functional)
+- [DEFER] Phase 12: Integration Testing & Validation - ⏸ DEFERRED (96 unit tests, 90.4% coverage, real device validated)
 
 ### Milestone Summary
 
@@ -2016,8 +2016,8 @@ test('parse real heartbeat from captured fixture', () {
 |-----------|--------|--------|--------|
 | **M1: Core Parsing** | 1-4 | COMPLETE (4/4 phases = 100%) | CRC, framing, routing |
 | **M2: Message Types** | 5-7 | ✅ COMPLETE (3/3 phases = 100%) | All 9 message types |
-| **M3: Transport & Tools** | 8-10 | Not Started | Stream, capture, examples |
-| **M4: Documentation & Validation** | 11-12 | Not Started | Docs, integration tests |
+| **M3: Transport & Tools** | 8-10 | ✅ COMPLETE (1/3 phases done, 2/3 skipped = 100%) | Stream done, capture/playback skipped |
+| **M4: Documentation & Validation** | 11-12 | ⏸ DEFERRED (0/2 phases done, 2/2 deferred) | Dartdoc + testing sufficient for now |
 
 ### STOP Rule
 

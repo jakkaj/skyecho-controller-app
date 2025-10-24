@@ -58,13 +58,15 @@ class Gdl90Stream {
   /// Creates a GDL90 stream receiver for the specified host and port.
   ///
   /// **Parameters**:
-  /// - [host]: UDP host to bind (typically '192.168.4.1' for SkyEcho)
+  /// - [host]: Local interface to bind to. Use '0.0.0.0' for any interface,
+  ///   or a specific IP like '192.168.4.100' to bind to one interface.
+  ///   Default: '0.0.0.0' (any interface)
   /// - [port]: UDP port (typically 4000 for GDL90)
   /// - [binder]: Optional UDP socket binder (defaults to
   ///   [RawDatagramSocket.bind]). Inject a custom binder in tests to avoid
   ///   real network I/O.
   Gdl90Stream({
-    required String host,
+    String host = '0.0.0.0',
     required int port,
     UdpBinder? binder,
   })  : _host = host,

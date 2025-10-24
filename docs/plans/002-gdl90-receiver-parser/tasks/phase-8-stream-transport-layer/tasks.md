@@ -49,6 +49,9 @@
 **Total Tasks**: 29
 **Dependencies**: Phase 7 (all parsers) complete
 
+**Active Subtasks**:
+- [001-subtask-foreflight-extension-messages-0x65-support](./001-subtask-foreflight-extension-messages-0x65-support.md) - ForeFlight extension message (0x65) support for device identification
+
 ---
 
 ## Alignment Brief

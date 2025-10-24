@@ -12,6 +12,7 @@ import 'dart:typed_data';
 /// - 0x14: Traffic Report
 /// - 0x1E: Basic Report
 /// - 0x1F: Long Report
+/// - 0x65: ForeFlight Extension (ID and AHRS sub-messages)
 enum Gdl90MessageType {
   heartbeat,
   initialization,
@@ -22,6 +23,8 @@ enum Gdl90MessageType {
   traffic,
   basicReport,
   longReport,
+  foreFlightId,
+  foreFlightAhrs,
 }
 
 /// Single unified message model containing all GDL90 message types.
@@ -163,6 +166,43 @@ class Gdl90Message {
   final int? audioInhibit;
   final int? audioTest;
 
+  // ForeFlight Extension fields (ID 0x65)
+  /// ForeFlight sub-message ID (0x00 = ID message, 0x01 = AHRS message)
+  final int? foreFlightSubId;
+
+  /// ForeFlight protocol version (typically 0x01)
+  final int? foreFlightVersion;
+
+  /// Device serial number (64-bit big-endian)
+  final int? serialNumber;
+
+  /// Device name (8-byte UTF-8 string, typically null-padded)
+  final String? deviceName;
+
+  /// Device long name (16-byte UTF-8 string, typically null-padded)
+  final String? deviceLongName;
+
+  /// Capabilities bitmask (32-bit big-endian)
+  ///
+  /// Known capability flags:
+  /// - Bit 0 (0x01): AHRS capable
+  /// - Bit 1 (0x02): GPS capable
+  /// - Bit 2 (0x04): Pressure altitude capable
+  final int? capabilitiesMask;
+
+  // ForeFlight AHRS fields (sub-ID 0x01) - not currently sent by SkyEcho
+  /// Roll angle in degrees (positive = right wing down)
+  final double? roll;
+
+  /// Pitch angle in degrees (positive = nose up)
+  final double? pitch;
+
+  /// True heading in degrees (0-359)
+  final double? heading;
+
+  /// Slip/skid indicator in g-force (positive = right slip)
+  final double? slipSkid;
+
   Gdl90Message({
     required this.messageType,
     required this.messageId,
@@ -207,6 +247,18 @@ class Gdl90Message {
     // Initialization
     this.audioInhibit,
     this.audioTest,
+    // ForeFlight Extension
+    this.foreFlightSubId,
+    this.foreFlightVersion,
+    this.serialNumber,
+    this.deviceName,
+    this.deviceLongName,
+    this.capabilitiesMask,
+    // ForeFlight AHRS
+    this.roll,
+    this.pitch,
+    this.heading,
+    this.slipSkid,
   });
 
   /// Computed property: Time of reception in seconds

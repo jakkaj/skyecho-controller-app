@@ -19,7 +19,8 @@ Future<void> main(List<String> args) async {
   // Parse command-line arguments
   final parser = ArgParser()
     ..addOption('host',
-        defaultsTo: '192.168.4.1', help: 'SkyEcho device IP address')
+        defaultsTo: '0.0.0.0',
+        help: 'Local interface to bind (0.0.0.0 = any interface)')
     ..addOption('port', defaultsTo: '4000', help: 'GDL90 UDP port')
     ..addOption('duration',
         abbr: 'd', defaultsTo: '30', help: 'Duration in seconds')
@@ -47,12 +48,12 @@ Future<void> main(List<String> args) async {
   print('║  SkyEcho GDL90 Real Device Test                               ║');
   print('╚════════════════════════════════════════════════════════════════╝');
   print('');
-  print('Connecting to: $host:$port (UDP)');
+  print('Listening on: $host:$port (UDP)');
   print('Duration: ${duration}s');
   print('Press Ctrl+C to stop early\n');
 
   // Create stream and connect
-  final stream = Gdl90Stream(host: host, port: port);
+  final stream = Gdl90Stream(port: port);
 
   // Statistics counters
   var heartbeatCount = 0;
@@ -61,6 +62,10 @@ Future<void> main(List<String> args) async {
   var messageCount = 0;
   var errorCount = 0;
   var unknownCount = 0;
+  var foreFlightIdCount = 0;
+
+  // Device info (populated from ForeFlight ID message)
+  String? deviceInfo;
 
   // Set up signal handling for graceful shutdown
   late StreamSubscription<ProcessSignal> sigintSub;
@@ -131,6 +136,39 @@ Future<void> main(List<String> args) async {
                 messageCount++;
                 print('🔄 FIS-B Report - '
                     'Type: ${message.messageType}');
+              case Gdl90MessageType.foreFlightId:
+                foreFlightIdCount++;
+                final device = message.deviceName ?? 'Unknown';
+                final serial = message.serialNumber ?? 0;
+                final version = message.foreFlightVersion ?? 0;
+                final longName = message.deviceLongName ?? '';
+                final caps = message.capabilitiesMask ?? 0;
+
+                // Store device info for display
+                if (deviceInfo == null) {
+                  deviceInfo = '$device (S/N: $serial)';
+                  print(
+                      '\n╔════════════════════════════════════════════════════════════════╗');
+                  print(
+                      '║  Device Identification                                        ║');
+                  print(
+                      '╚════════════════════════════════════════════════════════════════╝');
+                  print('📱 Device Name:       $device');
+                  if (longName.isNotEmpty) {
+                    print('   Long Name:         $longName');
+                  }
+                  print('   Serial Number:     $serial');
+                  print('   ForeFlight Ver:    $version');
+                  print(
+                      '   Capabilities:      0x${caps.toRadixString(16).toUpperCase().padLeft(8, "0")}');
+                  print('');
+                } else {
+                  print('📱 ForeFlight ID #$foreFlightIdCount - $deviceInfo');
+                }
+              case Gdl90MessageType.foreFlightAhrs:
+                messageCount++;
+                print('🔵 ForeFlight AHRS - '
+                    'Roll: ${message.roll?.toStringAsFixed(1) ?? "N/A"}°');
             }
           case Gdl90ErrorEvent(:final reason):
             errorCount++;
@@ -171,15 +209,21 @@ Future<void> main(List<String> args) async {
   print('\n╔════════════════════════════════════════════════════════════════╗');
   print('║  Summary                                                       ║');
   print('╚════════════════════════════════════════════════════════════════╝');
+  if (deviceInfo != null) {
+    print('Connected Device:     $deviceInfo');
+    print('');
+  }
   print('Heartbeats:           $heartbeatCount');
   print('Traffic Reports:      $trafficCount');
   print('Ownship Reports:      $ownshipCount');
+  print('ForeFlight ID Msgs:   $foreFlightIdCount');
   print('Other Messages:       $messageCount');
   print('Unknown Messages:     $unknownCount');
   print('Errors:               $errorCount');
   final total = heartbeatCount +
       trafficCount +
       ownshipCount +
+      foreFlightIdCount +
       messageCount +
       unknownCount +
       errorCount;

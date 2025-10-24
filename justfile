@@ -104,3 +104,36 @@ example-ping-url URL='http://192.168.4.1':
 
 # Run all example commands in sequence
 example-all: example-ping example-status example-config example-configure
+
+# === GDL90 Package Commands (packages/skyecho_gdl90/) ===
+
+# Install dependencies for the GDL90 package
+gdl90-install:
+    cd packages/skyecho_gdl90 && dart pub get
+
+# Run static analysis on the GDL90 package
+gdl90-analyze:
+    cd packages/skyecho_gdl90 && dart analyze
+
+# Format code in the GDL90 package
+gdl90-format:
+    cd packages/skyecho_gdl90 && dart format .
+
+# Run all tests for the GDL90 package
+gdl90-test:
+    cd packages/skyecho_gdl90 && dart test
+
+# Run only unit tests for the GDL90 package
+gdl90-test-unit:
+    cd packages/skyecho_gdl90 && dart test test/unit/
+
+# Test GDL90 stream with real SkyEcho device (default 30s)
+gdl90-test-device DURATION='30':
+    cd packages/skyecho_gdl90 && dart run example/real_device_test.dart --duration {{DURATION}}
+
+# Capture raw 0x65 messages for ForeFlight extension development
+gdl90-capture-0x65:
+    cd packages/skyecho_gdl90 && dart run example/capture_0x65.dart
+
+# Full GDL90 validation: install deps, analyze, format, run tests
+gdl90-validate: gdl90-install gdl90-analyze gdl90-test

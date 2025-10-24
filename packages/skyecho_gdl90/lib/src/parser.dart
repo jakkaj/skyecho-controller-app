@@ -1,3 +1,4 @@
+import 'dart:convert' show utf8;
 import 'dart:typed_data';
 
 import 'models/gdl90_event.dart';
@@ -86,6 +87,9 @@ class Gdl90Parser {
       case 0x1F: // Pass-Through Long Report
         return _parsePassThrough(messageId, payload);
 
+      case 0x65: // ForeFlight Extension
+        return _parseForeFlight(messageId, payload);
+
       default:
         return Gdl90ErrorEvent(
           reason:
@@ -93,8 +97,8 @@ class Gdl90Parser {
           hint:
               'Supported IDs: 0x00 (Heartbeat), 0x02 (Initialization), 0x07 (Uplink), '
               '0x09 (HAT), 0x0A (Ownship), 0x0B (Geo Altitude), 0x14 (Traffic), '
-              '0x1E (Basic Report), 0x1F (Long Report). Additional message types '
-              'may be implemented in Phase 8+.',
+              '0x1E (Basic Report), 0x1F (Long Report), 0x65 (ForeFlight). '
+              'Additional message types may be implemented in Phase 8+.',
           rawBytes: frame,
         );
     }
@@ -765,5 +769,124 @@ class Gdl90Parser {
       basicReportPayload: messageId == 0x1E ? reportPayload : null,
       longReportPayload: messageId == 0x1F ? reportPayload : null,
     ));
+  }
+
+  /// Parses ForeFlight Extension message (0x65)
+  ///
+  /// ForeFlight extensions provide device identification and AHRS data
+  /// beyond standard GDL90 specification.
+  ///
+  /// Sub-IDs:
+  /// - 0x00: Device ID (serial, name, capabilities)
+  /// - 0x01: AHRS (attitude/heading data)
+  /// - Others: Reserved for future extensions
+  static Gdl90Event _parseForeFlight(int messageId, Uint8List payload) {
+    if (payload.isEmpty) {
+      return Gdl90ErrorEvent(
+        reason: 'Empty ForeFlight message',
+        hint: 'ForeFlight messages require at least sub-ID byte',
+      );
+    }
+
+    final subId = payload[0];
+
+    switch (subId) {
+      case 0x00:
+        return _parseForeFlightId(messageId, payload);
+      case 0x01:
+        return _parseForeFlightAhrs(messageId, payload);
+      default:
+        return Gdl90ErrorEvent(
+          reason:
+              'Unknown ForeFlight sub-ID: 0x${subId.toRadixString(16).padLeft(2, '0')}',
+          hint:
+              'Supported sub-IDs: 0x00 (Device ID), 0x01 (AHRS). This may indicate new device firmware.',
+        );
+    }
+  }
+
+  /// Parses ForeFlight Device ID message (sub-ID 0x00)
+  ///
+  /// Extracts device identification and capabilities from 38-byte payload.
+  /// Uses big-endian encoding for multi-byte integers (unusual for GDL90).
+  static Gdl90Event _parseForeFlightId(int messageId, Uint8List payload) {
+    // Payload: sub-ID (1) + version (1) + serial (8) + name (8) + long name (16) + caps (4) = 38 bytes
+    if (payload.length < 38) {
+      return Gdl90ErrorEvent(
+        reason:
+            'ForeFlight ID message too short: ${payload.length} bytes (expected 38)',
+        hint:
+            'ForeFlight ID payload: [sub-id, version, serial(8), name(8), long_name(16), caps(4)]',
+      );
+    }
+
+    final subId = payload[0];
+    final version = payload[1];
+
+    // Extract 64-bit big-endian serial number (bytes 2-9)
+    int serial = 0;
+    for (var i = 2; i < 10; i++) {
+      serial = (serial << 8) | payload[i];
+    }
+
+    // Extract 8-byte UTF-8 device name (bytes 10-17)
+    // CRITICAL: Use try-catch to maintain "never throw" architectural pattern
+    final nameBytes = payload.sublist(10, 18);
+    final nameEndIndex = nameBytes.indexOf(0);
+    final nameLength = nameEndIndex == -1 ? 8 : nameEndIndex;
+    String deviceName;
+    try {
+      deviceName = utf8.decode(nameBytes.sublist(0, nameLength));
+    } catch (e) {
+      return Gdl90ErrorEvent(
+        reason: 'Invalid UTF-8 in ForeFlight device name: $e',
+        hint: 'Device name field contains malformed UTF-8 sequence',
+      );
+    }
+
+    // Extract 16-byte UTF-8 long device name (bytes 18-33)
+    final longNameBytes = payload.sublist(18, 34);
+    final longNameEndIndex = longNameBytes.indexOf(0);
+    final longNameLength = longNameEndIndex == -1 ? 16 : longNameEndIndex;
+    String deviceLongName;
+    try {
+      deviceLongName = utf8.decode(longNameBytes.sublist(0, longNameLength));
+    } catch (e) {
+      return Gdl90ErrorEvent(
+        reason: 'Invalid UTF-8 in ForeFlight device long name: $e',
+        hint: 'Long device name field contains malformed UTF-8 sequence',
+      );
+    }
+
+    // Extract 32-bit big-endian capabilities (bytes 34-37)
+    final capabilities = (payload[34] << 24) |
+        (payload[35] << 16) |
+        (payload[36] << 8) |
+        payload[37];
+
+    return Gdl90DataEvent(
+      Gdl90Message(
+        messageType: Gdl90MessageType.foreFlightId,
+        messageId: messageId,
+        foreFlightSubId: subId,
+        foreFlightVersion: version,
+        serialNumber: serial,
+        deviceName: deviceName,
+        deviceLongName: deviceLongName,
+        capabilitiesMask: capabilities,
+      ),
+    );
+  }
+
+  /// Parses ForeFlight AHRS message (sub-ID 0x01)
+  ///
+  /// AHRS provides attitude and heading data for glass cockpit displays.
+  /// Note: SkyEcho does not currently transmit AHRS data.
+  static Gdl90Event _parseForeFlightAhrs(int messageId, Uint8List payload) {
+    // TODO: Implement AHRS parsing when device support confirmed
+    return Gdl90ErrorEvent(
+      reason: 'ForeFlight AHRS messages not yet supported',
+      hint: 'AHRS parsing will be implemented when device support is confirmed',
+    );
   }
 }

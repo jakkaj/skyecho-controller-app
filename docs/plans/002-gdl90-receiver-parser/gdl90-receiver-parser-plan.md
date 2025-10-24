@@ -2195,6 +2195,71 @@ During implementation, footnote tags from task Notes are added here with details
   - Total 75 tests passing (62 baseline + 13 Phase 7)
   - All tests include comprehensive Test Doc blocks (5 required fields)
 
+### Subtask 001: ForeFlight Extension Messages (0x65) Support
+
+[^31]: ST001 - Documentation created
+  - `file:docs/research/foreflight-extensions.md`
+
+[^32]: ST001b - Investigation findings documented
+  - Updated understanding: Framer keeps CRC, Parser strips CRC
+  - Evidence: `file:packages/skyecho_gdl90/lib/src/framer.dart` (line 72)
+  - Evidence: `file:packages/skyecho_gdl90/lib/src/parser.dart` (line 9)
+  - Evidence: `file:packages/skyecho_gdl90/test/unit/framer_test.dart` (line 36)
+  - Conclusion: Parser expects 39-byte payload (CRC already stripped)
+
+[^33]: ST002 - Added ForeFlight message types to Gdl90MessageType enum
+  - `class:packages/skyecho_gdl90/lib/src/models/gdl90_message.dart:Gdl90MessageType`
+  - Added: `foreFlightId` (sub-ID 0x00), `foreFlightAhrs` (sub-ID 0x01)
+
+[^34]: ST003 - Added ForeFlight ID fields to Gdl90Message (6 fields)
+  - `class:packages/skyecho_gdl90/lib/src/models/gdl90_message.dart:Gdl90Message`
+  - Fields: `foreFlightSubId`, `foreFlightVersion`, `serialNumber` (64-bit big-endian)
+  - Fields: `deviceName` (8-byte UTF-8), `deviceLongName` (16-byte UTF-8), `capabilitiesMask` (32-bit big-endian)
+
+[^35]: ST004 - Added ForeFlight AHRS fields to Gdl90Message (4 fields) + example updates
+  - `class:packages/skyecho_gdl90/lib/src/models/gdl90_message.dart:Gdl90Message`
+  - AHRS fields: `roll`, `pitch`, `heading`, `slipSkid` (conditional - not sent by SkyEcho)
+  - `file:packages/skyecho_gdl90/example/real_device_test.dart` - Added exhaustive switch cases for new message types
+
+[^36]: ST005-ST010 - ForeFlight test suite (RED phase) - 7 tests written
+  - `file:packages/skyecho_gdl90/test/unit/foreflight_test.dart`
+  - ST005: Full ForeFlight ID message parsing with real SkyEcho data
+  - ST005b: Integration test ensuring routing table includes 0x65
+  - ST006: UTF-8 string decoding with null termination
+  - ST006b: Tests "never throw" architecture with malformed UTF-8
+  - ST007: Big-endian 64-bit serial and 32-bit capabilities conversion
+  - ST008: Raw bitmask extraction without interpretation
+  - ST009: AHRS message (deferred - SkyEcho doesn't send AHRS data)
+  - ST010: Forward compatibility with future sub-IDs
+
+[^37]: ST011 - RED gate verified - all 7 tests failing as expected
+  - Test command: `dart test test/unit/foreflight_test.dart`
+  - Results: 0 passing / 7 failing (expected behavior)
+  - All tests fail with "Unknown message ID: 0x65" error
+  - Confirms parser not yet implemented (TDD RED gate passed)
+
+[^38]: ST012-ST015 - ForeFlight parser implementation (GREEN phase)
+  - `method:lib/src/parser.dart:Gdl90Parser._parseForeFlight`
+  - `method:lib/src/parser.dart:Gdl90Parser._parseForeFlightId`
+  - `method:lib/src/parser.dart:Gdl90Parser._parseForeFlightAhrs`
+  - `file:lib/src/parser.dart`
+  - `file:test/unit/foreflight_test.dart`
+
+[^39]: ST016 - GREEN gate verified - all tests passing
+  - Test command: `dart test test/unit/foreflight_test.dart`
+  - Results: 7/7 tests passing (100% pass rate)
+  - Full test suite: 96/96 tests passing
+  - Zero analyzer errors
+  - TDD cycle complete (RED → GREEN)
+
+[^40]: ST017-ST021 - Integration & quality gates
+  - `file:example/real_device_test.dart`
+  - Enhanced device info display with ForeFlight ID data
+  - Coverage ≥90% on ForeFlight parser code
+  - Zero analyzer errors maintained
+  - All files formatted
+  - Real device test instructions provided
+
 ---
 
 **End of Implementation Plan**
@@ -2215,3 +2280,13 @@ During implementation, footnote tags from task Notes are added here with details
 - ✅ 100% coverage requirement on parsing logic
 - ✅ Integration tests against real device
 - ✅ CLI tools for capture and playback
+
+---
+
+## Subtasks Registry
+
+Mid-implementation detours requiring structured tracking.
+
+| ID | Created | Phase | Parent Task | Reason | Status | Dossier |
+|----|---------|-------|-------------|--------|--------|---------|
+| 001-subtask-foreflight-extension-messages-0x65-support | 2025-10-23 | Phase 8: Stream Transport Layer | N/A (Enhancement) | Discovered during real device testing - ForeFlight extension messages (0x65) for device identification and AHRS data | [✓] Complete (24/24 tasks, 100%) | [Link](tasks/phase-8-stream-transport-layer/001-subtask-foreflight-extension-messages-0x65-support.md) · [📋](tasks/phase-8-stream-transport-layer/001-subtask-foreflight-extension-messages-0x65-support.execution.log.md#st017-st021-integration-quality-gates) · log#st017-st021 [^31] [^32] [^33] [^34] [^35] [^36] [^37] [^38] [^39] [^40] |

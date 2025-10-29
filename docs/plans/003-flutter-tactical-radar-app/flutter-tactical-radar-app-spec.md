@@ -28,8 +28,8 @@ A Flutter application that provides pilots with a tactical radar display of ADS-
 - Detailed traffic symbology beyond basic position markers
 - Audio alerts or voice callouts
 - Integration with third-party apps (ForeFlight link, etc.)
-
-[NEEDS CLARIFICATION: Should the initial version support any state persistence, or can device settings and UI preferences be ephemeral?]
+- Android support (iOS-first, Android may come later)
+- iPad-specific UI optimizations (universal iOS app with consistent interface)
 
 ## Acceptance Criteria
 
@@ -63,6 +63,9 @@ The following scenarios must be observable and testable to consider Phase 1 comp
 - Both `skyecho` and `skyecho_gdl90` packages work correctly in Flutter context (not just Dart VM)
 - macOS desktop provides sufficient development environment to validate all functionality before iOS deployment
 - iOS deployment will target iPhone and iPad form factors
+- iOS 16+ / macOS 13+ minimum versions provide adequate device coverage and modern API access
+- State persistence via `shared_preferences` (or similar) is sufficient for user preferences and device settings
+- App lifecycle management can cleanly suspend/resume GDL90 stream without data loss
 
 **Risks:**
 - **Performance Risk**: Flutter UI updates from high-frequency GDL90 messages may cause dropped frames or lag
@@ -76,24 +79,123 @@ The following scenarios must be observable and testable to consider Phase 1 comp
 
 ## Open Questions
 
+### Resolved
+
 1. **Platform Priority**: ~~Which mobile platform should be targeted first - iOS, Android, or both simultaneously?~~ **RESOLVED**: macOS desktop for development, then iOS (iPhone/iPad) for production.
 
-2. **Minimum OS Versions**: What are the minimum supported OS versions? (iOS 15+? iOS 16+? macOS 12+?) [NEEDS CLARIFICATION]
+2. **Minimum OS Versions**: ~~What are the minimum supported OS versions?~~ **RESOLVED**: iOS 16+ / macOS 13+ for modern API access and reasonable device coverage.
 
-3. **Background Operation**: Should the app continue receiving GDL90 data when backgrounded, or suspend the stream? [NEEDS CLARIFICATION]
+3. **Background Operation**: ~~Should the app continue receiving GDL90 data when backgrounded, or suspend the stream?~~ **RESOLVED**: Suspend stream when backgrounded, resume when foregrounded (battery-friendly, simpler).
 
-4. **State Persistence**: Should device connection settings, zoom level, and other UI preferences be persisted between app sessions? [NEEDS CLARIFICATION]
+4. **State Persistence**: ~~Should device connection settings, zoom level, and other UI preferences be persisted between app sessions?~~ **RESOLVED**: Yes, persist all (device URL, zoom level, preferences) for better UX.
 
-5. **Ownship Position Source**: How is ownship (user's aircraft) position determined? From GDL90 ownship messages only, or also device GPS if available? [NEEDS CLARIFICATION]
+### Deferred (Implementation Details)
 
-6. **Traffic Filtering**: Should the radar view have any traffic filtering options (altitude range, distance cutoff) in Phase 1, or display all received traffic? [NEEDS CLARIFICATION]
+5. **Ownship Position Source**: How is ownship (user's aircraft) position determined? From GDL90 ownship messages only, or also device GPS if available? → *Can decide during Radar view implementation*
 
-7. **Orientation Handling**: Should the radar display support device rotation/orientation changes, or lock to a single orientation? [NEEDS CLARIFICATION]
+6. **Traffic Filtering**: Should the radar view have any traffic filtering options (altitude range, distance cutoff) in Phase 1, or display all received traffic? → *Start with no filtering (simpler); add if needed*
 
-8. **Network Permissions**: Are there specific privacy/permission requirements for WiFi network access on iOS? (macOS has fewer restrictions for local network access) [NEEDS CLARIFICATION]
+7. **Orientation Handling**: Should the radar display support device rotation/orientation changes, or lock to a single orientation? → *Can decide during UI implementation; likely lock to landscape initially*
 
-9. **Desktop UI Considerations**: Should the macOS desktop version have any platform-specific UI adaptations (keyboard shortcuts, menu bar), or maintain exact parity with iOS touch interface? [NEEDS CLARIFICATION]
+8. **Network Permissions**: Are there specific privacy/permission requirements for WiFi network access on iOS? → *Research during iOS deployment phase; add Info.plist entries as needed*
+
+9. **Desktop UI Considerations**: Should the macOS desktop version have any platform-specific UI adaptations (keyboard shortcuts, menu bar), or maintain exact parity with iOS touch interface? → *Maintain parity initially; add desktop niceties if time permits*
+
+## Testing Strategy
+
+**Approach**: TAD (Test-Assisted Development)
+
+**Rationale**: Flutter UI development with real-time data integration benefits from executable documentation that validates behavior while explaining architecture patterns. The existing `skyecho` and `skyecho_gdl90` packages already use TAD successfully.
+
+**Focus Areas**:
+- State management integration (device state, stream state, UI state coordination)
+- Real-time GDL90 message processing and UI update batching
+- Library integration patterns (`skyecho` and `skyecho_gdl90` in Flutter context)
+- Radar visualization coordinate transforms and traffic positioning
+- Connection lifecycle management (start/stop/reconnect)
+
+**Excluded**:
+- Basic Flutter widget composition (use standard patterns)
+- Simple UI layout (Config/Radar navigation)
+- Platform boilerplate (generated Flutter project structure)
+
+**Mock Usage**: Allow targeted mocks - limited to external systems (SkyEcho device HTTP/UDP) or slow dependencies
+
+**TAD-Specific Requirements**:
+- **Scratch→Promote Workflow**: Exploratory tests in `test/scratch/` (gitignored), promote to `test/unit/` only if they provide durable value (Critical path, Opaque behavior, Regression-prone, Edge case)
+- **Test Doc Blocks**: All promoted tests MUST include 5-field Test Doc comment block:
+  - Why: Validates core parsing logic for landing page status table
+  - Contract: DeviceStatus.fromDocument returns non-null status with populated fields
+  - Usage Notes: Pass complete HTML document; parser is resilient to missing optional fields
+  - Quality Contribution: Catches HTML structure changes; documents expected field mappings
+  - Worked Example: Sample HTML with "Wi-Fi Version: 0.2.41" → wifiVersion="0.2.41"
+- **Coverage Targets**: Core business logic 90%, UI state management 90%, error handling 90%
+
+## Documentation Strategy
+
+**Location**: Hybrid (README.md + docs/how/)
+
+**Rationale**: Flutter app needs quick-start for users (README) plus detailed architecture/integration docs for developers (docs/how/)
+
+**Content Split**:
+- **README.md**: Quick-start essentials - `flutter run`, basic usage, connecting to SkyEcho, navigating views
+- **docs/how/**: Architecture details, state management patterns, library integration (`skyecho` + `skyecho_gdl90`), radar visualization internals
+
+**Target Audience**:
+- README: End users (pilots) and developers doing initial setup
+- docs/how/: Developers extending features, maintainers, contributors
+
+**Maintenance**: Update README for user-facing changes; update docs/how/ for architectural changes or library integration patterns
+
+## Clarifications
+
+### Session 2025-10-27
+
+**Q1: Testing Strategy**
+**A**: TAD (Test-Assisted Development)
+**Impact**: Tests serve as executable documentation; scratch→promote workflow; Test Doc blocks required
+
+**Q2: Mock Usage**
+**A**: Allow targeted mocks (external systems, slow dependencies only)
+**Impact**: Mock SkyEcho device HTTP/UDP, but use real state management and library integrations
+
+**Q3: Documentation Strategy**
+**A**: Hybrid (README + docs/how/)
+**Split**: README has quick-start (`flutter run`, basic usage); docs/how/ has architecture, state management, library integration
+**Impact**: Documentation planning in architecture phase must include both locations
+
+**Q4: State Persistence**
+**A**: Yes, persist all (device URL, zoom level, preferences)
+**Impact**: Requires state persistence layer (shared_preferences or similar); affects state management architecture
+
+**Q5: Background Operation (iOS)**
+**A**: Suspend stream when backgrounded, resume on foreground
+**Impact**: Implement app lifecycle listeners; cleaner battery usage; no iOS background capabilities needed
+
+**Q6: Minimum OS Versions**
+**A**: iOS 16+ / macOS 13+
+**Impact**: Access to modern Flutter APIs; reasonable device coverage; can use iOS 16 features
+
+### Clarification Summary
+
+| Category | Status | Decision | Impact |
+|----------|--------|----------|--------|
+| **Testing Strategy** | ✅ Resolved | TAD (Test-Assisted Development) | Scratch→promote workflow; Test Doc blocks required; 90% coverage targets |
+| **Mock Usage** | ✅ Resolved | Targeted mocks only | Mock SkyEcho device HTTP/UDP; real state management |
+| **Documentation** | ✅ Resolved | Hybrid (README + docs/how/) | Quick-start in README; architecture in docs/how/ |
+| **State Persistence** | ✅ Resolved | Persist all settings | Requires shared_preferences; better UX |
+| **Background Behavior** | ✅ Resolved | Suspend stream when backgrounded | App lifecycle management; no iOS background capabilities |
+| **Minimum OS** | ✅ Resolved | iOS 16+ / macOS 13+ | Modern APIs; reasonable device coverage |
+| **Ownship Source** | ⏸ Deferred | TBD during implementation | Decide in Radar view phase |
+| **Traffic Filtering** | ⏸ Deferred | Start with none | Simpler initial implementation |
+| **Orientation** | ⏸ Deferred | TBD during UI work | Likely lock landscape initially |
+| **Network Permissions** | ⏸ Deferred | Research during iOS phase | Add Info.plist entries as needed |
+| **Desktop UI Extras** | ⏸ Deferred | Maintain parity initially | Desktop shortcuts optional enhancement |
+
+**Resolved**: 6 high-impact questions answered
+**Deferred**: 5 implementation details postponed to relevant phases
+**Outstanding**: 0 blocking ambiguities remain
 
 ---
 
-**Next Step**: Run `/plan-2-clarify` to resolve high-impact open questions before architecture phase.
+**Next Step**: Run `/plan-3-architect` to generate the phase-based plan.

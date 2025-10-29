@@ -4,13 +4,29 @@
 
 A Flutter application that provides pilots with a tactical radar display of ADS-B traffic and device configuration capabilities. The app integrates the existing `skyecho` device control library and `skyecho_gdl90` GDL90 parsing library to create an interface for interacting with uAvionix SkyEcho 2 ADS-B receivers.
 
-**Development Strategy**: Initial development targets macOS desktop for rapid iteration and testing, with subsequent deployment to iOS (iPhone and iPad) as the production target platform.
+**Development Strategy**: iOS-only (iPad and iPhone universal app). The iPad version can run directly on Apple Silicon Macs via "Designed for iPad" mode, providing a native development environment without requiring a separate macOS desktop build.
 
 **User Value**: Pilots gain a portable tactical awareness tool that displays nearby aircraft traffic in real-time and allows configuration of their SkyEcho device without requiring external apps or web browsers.
 
+## Platform Discovery: "Designed for iPad" Mode
+
+During initial planning, we discovered that iPad apps can run natively on Apple Silicon Macs through Apple's "Designed for iPad" compatibility layer. This eliminates the need for a separate macOS desktop build for development purposes.
+
+**Benefits:**
+- Single codebase targeting iOS (iPhone and iPad)
+- Developers can test on Mac hardware without maintaining macOS-specific code
+- Simplified platform configuration (no macOS-specific Info.plist, entitlements, or build settings)
+- Faster iteration without requiring physical iOS device for basic development
+
+**Considerations:**
+- "Designed for iPad" apps run in a scaled iOS environment on Mac
+- Some Mac-specific features (keyboard shortcuts, menu bar) not available
+- Full iOS permissions model applies (including local network permission)
+- Final testing should still occur on physical iOS devices
+
 ## Goals
 
-- **Cross-Platform Foundation**: Provide a Flutter app that runs on macOS desktop (development) and iOS (production) with consistent functionality
+- **iOS Universal App**: Provide a Flutter app for iOS (iPhone and iPad) with consistent functionality across form factors
 - **Dual-View Interface**: Create two primary views - Configuration for device management and Radar for traffic visualization
 - **Library Integration Foundation**: Establish the architectural patterns for integrating both `skyecho` (device control) and `skyecho_gdl90` (data parsing) packages into a Flutter UI
 - **Basic Radar Visualization**: Display traffic on a simple radar-style interface with zoomable range rings and relative positioning
@@ -59,19 +75,18 @@ The following scenarios must be observable and testable to consider Phase 1 comp
 
 **Assumptions:**
 - Flutter framework is suitable for real-time GDL90 message processing (30-100 msg/sec under high traffic)
-- Devices (macOS desktop during development, iOS in production) will connect to SkyEcho via WiFi (192.168.4.1)
+- iOS devices (iPhone and iPad) will connect to SkyEcho via WiFi (192.168.4.1)
 - Both `skyecho` and `skyecho_gdl90` packages work correctly in Flutter context (not just Dart VM)
-- macOS desktop provides sufficient development environment to validate all functionality before iOS deployment
-- iOS deployment will target iPhone and iPad form factors
-- iOS 16+ / macOS 13+ minimum versions provide adequate device coverage and modern API access
+- iPad app running on Apple Silicon Macs via "Designed for iPad" provides sufficient development environment to validate all functionality
+- iOS 16+ minimum version provides adequate device coverage and modern API access
 - State persistence via `shared_preferences` (or similar) is sufficient for user preferences and device settings
 - App lifecycle management can cleanly suspend/resume GDL90 stream without data loss
 
 **Risks:**
 - **Performance Risk**: Flutter UI updates from high-frequency GDL90 messages may cause dropped frames or lag
   - *Mitigation*: Implement message throttling/batching before UI updates
-- **WiFi Connectivity Risk**: iOS WiFi handling (auto-switching to cellular, background disconnects) may disrupt SkyEcho connection; less of an issue on macOS desktop
-  - *Mitigation*: Implement connection monitoring and auto-reconnect logic; validate behavior on both platforms
+- **WiFi Connectivity Risk**: iOS WiFi handling (auto-switching to cellular, background disconnects) may disrupt SkyEcho connection
+  - *Mitigation*: Implement connection monitoring and auto-reconnect logic
 - **State Management Complexity**: Coordinating device state, stream state, and UI state across views may require careful architecture
   - *Mitigation*: Use established Flutter state management pattern (Riverpod, Bloc, etc.) from start
 - **Testing Without Hardware**: Development/testing requires either physical SkyEcho device or comprehensive mocking
@@ -81,9 +96,9 @@ The following scenarios must be observable and testable to consider Phase 1 comp
 
 ### Resolved
 
-1. **Platform Priority**: ~~Which mobile platform should be targeted first - iOS, Android, or both simultaneously?~~ **RESOLVED**: macOS desktop for development, then iOS (iPhone/iPad) for production.
+1. **Platform Priority**: ~~Which mobile platform should be targeted first - iOS, Android, or both simultaneously?~~ **RESOLVED**: iOS-only (iPhone/iPad). iPad app runs natively on Apple Silicon Macs via "Designed for iPad" mode, eliminating need for separate macOS desktop build.
 
-2. **Minimum OS Versions**: ~~What are the minimum supported OS versions?~~ **RESOLVED**: iOS 16+ / macOS 13+ for modern API access and reasonable device coverage.
+2. **Minimum OS Versions**: ~~What are the minimum supported OS versions?~~ **RESOLVED**: iOS 16+ for modern API access and reasonable device coverage.
 
 3. **Background Operation**: ~~Should the app continue receiving GDL90 data when backgrounded, or suspend the stream?~~ **RESOLVED**: Suspend stream when backgrounded, resume when foregrounded (battery-friendly, simpler).
 
@@ -98,8 +113,6 @@ The following scenarios must be observable and testable to consider Phase 1 comp
 7. **Orientation Handling**: Should the radar display support device rotation/orientation changes, or lock to a single orientation? → *Can decide during UI implementation; likely lock to landscape initially*
 
 8. **Network Permissions**: Are there specific privacy/permission requirements for WiFi network access on iOS? → *Research during iOS deployment phase; add Info.plist entries as needed*
-
-9. **Desktop UI Considerations**: Should the macOS desktop version have any platform-specific UI adaptations (keyboard shortcuts, menu bar), or maintain exact parity with iOS touch interface? → *Maintain parity initially; add desktop niceties if time permits*
 
 ## Testing Strategy
 
@@ -173,7 +186,7 @@ The following scenarios must be observable and testable to consider Phase 1 comp
 **Impact**: Implement app lifecycle listeners; cleaner battery usage; no iOS background capabilities needed
 
 **Q6: Minimum OS Versions**
-**A**: iOS 16+ / macOS 13+
+**A**: iOS 16+
 **Impact**: Access to modern Flutter APIs; reasonable device coverage; can use iOS 16 features
 
 ### Clarification Summary
@@ -185,15 +198,14 @@ The following scenarios must be observable and testable to consider Phase 1 comp
 | **Documentation** | ✅ Resolved | Hybrid (README + docs/how/) | Quick-start in README; architecture in docs/how/ |
 | **State Persistence** | ✅ Resolved | Persist all settings | Requires shared_preferences; better UX |
 | **Background Behavior** | ✅ Resolved | Suspend stream when backgrounded | App lifecycle management; no iOS background capabilities |
-| **Minimum OS** | ✅ Resolved | iOS 16+ / macOS 13+ | Modern APIs; reasonable device coverage |
+| **Minimum OS** | ✅ Resolved | iOS 16+ | Modern APIs; reasonable device coverage |
 | **Ownship Source** | ⏸ Deferred | TBD during implementation | Decide in Radar view phase |
 | **Traffic Filtering** | ⏸ Deferred | Start with none | Simpler initial implementation |
 | **Orientation** | ⏸ Deferred | TBD during UI work | Likely lock landscape initially |
 | **Network Permissions** | ⏸ Deferred | Research during iOS phase | Add Info.plist entries as needed |
-| **Desktop UI Extras** | ⏸ Deferred | Maintain parity initially | Desktop shortcuts optional enhancement |
 
 **Resolved**: 6 high-impact questions answered
-**Deferred**: 5 implementation details postponed to relevant phases
+**Deferred**: 4 implementation details postponed to relevant phases
 **Outstanding**: 0 blocking ambiguities remain
 
 ---

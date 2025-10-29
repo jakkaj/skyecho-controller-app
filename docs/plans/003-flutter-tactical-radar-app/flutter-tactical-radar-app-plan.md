@@ -41,13 +41,14 @@ Pilots using uAvionix SkyEcho 2 ADS-B receivers need a native mobile application
 
 ### Solution Approach
 
-Develop a Flutter application targeting macOS desktop (development environment) and iOS (production deployment) that:
+Develop a Flutter application targeting iOS (iPhone and iPad universal app) that:
 
 1. **Integrates two existing Dart packages**: `skyecho` (HTTP device control) and `skyecho_gdl90` (GDL90 UDP stream parsing)
 2. **Provides dual-view interface**: Configuration view for device management, Radar view for traffic visualization
 3. **Handles real-time data**: Processes 30-100 GDL90 messages/second with batched UI updates to maintain 60fps performance
 4. **Manages application lifecycle**: Suspends GDL90 stream when backgrounded (iOS battery optimization), resumes on foreground
 5. **Persists user preferences**: Device URL, zoom level, and UI settings across app sessions
+6. **Development Environment**: iPad app runs natively on Apple Silicon Macs via "Designed for iPad" mode, eliminating need for separate macOS desktop build
 
 ### Expected Outcomes
 
@@ -60,7 +61,7 @@ Develop a Flutter application targeting macOS desktop (development environment) 
 - **Performance**: Maintain 60fps with 100 aircraft on radar display
 - **Reliability**: Zero crashes during 30-minute flight test with real SkyEcho device
 - **Test Coverage**: 90% coverage on state management and service layers
-- **Platform Parity**: Identical functionality on macOS desktop and iOS
+- **Platform**: Full functionality on iOS (iPhone and iPad)
 
 ---
 
@@ -80,7 +81,7 @@ Develop a Flutter application targeting macOS desktop (development environment) 
   - Zero external dependencies except `args` for examples
 
 **Target Environment:**
-- Development: macOS desktop (Flutter desktop application)
+- Development: iOS app running on Apple Silicon Mac via "Designed for iPad" mode
 - Production: iOS 16+ (iPhone and iPad universal app)
 - Network: WiFi connection to SkyEcho device at `http://192.168.4.1`
 - Data Rate: 30-100 GDL90 messages/second under high traffic conditions
@@ -98,11 +99,7 @@ Develop a Flutter application targeting macOS desktop (development environment) 
   - `NSLocalNetworkUsageDescription` in Info.plist for WiFi access to 192.168.4.1
   - `NSBonjourServices` in Info.plist to trigger permission dialog
   - App lifecycle management (suspend stream on background)
-
-- **macOS Desktop**:
-  - Window management for development testing
-  - No special permissions required for local network access
-  - Lifecycle API limitations (use `flutter_fgbg` package)
+  - Deployment target: iOS 16.0+
 
 ### Constraints and Limitations
 
@@ -118,14 +115,14 @@ Develop a Flutter application targeting macOS desktop (development environment) 
 
 **Platform Constraints:**
 - iOS local network permission dialog may not appear (known bug in iOS 17.4+, 18.x)
-- macOS `AppLifecycleState` events don't fire correctly (use `flutter_fgbg`)
 - Face ID/Touch ID triggers false `paused` events (debounce lifecycle changes)
+- "Designed for iPad" mode on Mac may have limitations compared to native macOS (acceptable for development)
 
 ### Assumptions
 
 1. **Flutter Framework**: Adequate for real-time GDL90 processing with proper batching
 2. **Package Compatibility**: Both `skyecho` and `skyecho_gdl90` work correctly in Flutter context
-3. **Development Workflow**: macOS desktop sufficient to validate all functionality before iOS deployment
+3. **Development Workflow**: iPad app running on Apple Silicon Mac via "Designed for iPad" mode sufficient to validate all functionality
 4. **State Management**: Riverpod provides best performance/architecture balance for high-frequency updates
 5. **Coordinate Transforms**: Equirectangular projection adequate for <50nm radar ranges
 6. **Permission Workflow**: Users can manually enable Local Network permission if dialog fails
@@ -737,7 +734,7 @@ apps/tactical_radar/
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Package path dependency resolution fails | Low | High | Test with `flutter pub get` immediately |
-| Platform-specific build errors (iOS/macOS) | Medium | Medium | Validate on both platforms in setup phase |
+| iOS-specific build errors | Medium | Medium | Validate build immediately after setup |
 | Analysis options conflict with existing packages | Low | Low | Inherit from packages, add app-specific rules |
 
 ### Tasks (TAD Approach)
@@ -745,15 +742,15 @@ apps/tactical_radar/
 | #   | Status | Task | Success Criteria | Log | Notes |
 |-----|--------|------|------------------|-----|-------|
 | 1.0 | [ ] | Write smoke test for app launch | Test renders MaterialApp, shows app title | - | Test-first: write before scaffolding |
-| 1.1 | [ ] | Create Flutter project with desktop + iOS support | `flutter create --platforms=ios,macos apps/tactical_radar` succeeds | - | Use org ID: com.skyecho.tacticalradar |
+| 1.1 | [ ] | Create Flutter project with iOS support | `flutter create --platforms=ios apps/tactical_radar` succeeds | - | Use org ID: com.skyecho.tacticalradar |
 | 1.2 | [ ] | Configure pubspec.yaml with package dependencies | Both packages imported successfully via path; flutter_fgbg: ^0.3.0 added | - | Add skyecho, skyecho_gdl90, riverpod, shared_preferences, flutter_fgbg, http (testing) |
 | 1.3 | [ ] | Set up directory structure (test/scratch, test/unit, test/widget) | All directories exist, scratch/ in .gitignore | - | Mirror structure from packages; add test/scratch/ to .gitignore |
 | 1.4 | [ ] | Copy analysis_options.yaml from skyecho package | `dart analyze` runs clean | - | Add app-specific lint rules if needed |
 | 1.5 | [ ] | Create smoke test importing both packages | Test compiles and runs | - | Verify SkyEchoClient and Gdl90Stream constructors |
 | 1.6 | [ ] | Configure iOS Info.plist with network permissions | Both NSLocalNetworkUsageDescription and NSBonjourServices present | - | See Discovery S2-01 |
-| 1.7 | [ ] | Set minimum deployment targets | iOS 16+, macOS 13+ configured in Xcode | - | Match spec requirements |
+| 1.7 | [ ] | Set iOS minimum deployment target | iOS 16.0+ configured in Xcode | - | Match spec requirements |
 | 1.8 | [ ] | Add flutter_fgbg package for lifecycle management | Package added to pubspec.yaml | - | See Discovery S2-05 |
-| 1.9 | [ ] | Verify macOS and iOS builds succeed | Both `flutter run -d macos` and iOS simulator builds work | - | No package import errors |
+| 1.9 | [ ] | Verify iOS build succeeds | `flutter run -d iphone` or iOS simulator build works | - | No package import errors |
 
 ### Acceptance Criteria
 
@@ -771,9 +768,10 @@ apps/tactical_radar/
     print('Smoke test passed: Packages imported successfully');
   }
   ```
-- [ ] macOS desktop build succeeds
 - [ ] iOS simulator build succeeds
+- [ ] iOS app runs on Apple Silicon Mac via "Designed for iPad" mode
 - [ ] Info.plist contains both required keys (NSLocalNetworkUsageDescription, NSBonjourServices)
+- [ ] iOS deployment target set to 16.0
 
 ---
 
@@ -1061,6 +1059,16 @@ Timer.periodic(Duration(seconds: 1), (_) {
 
 [^1]: [To be added during implementation via plan-6a]
 [^2]: [To be added during implementation via plan-6a]
+
+---
+
+## Subtasks Registry
+
+Mid-implementation detours requiring structured tracking.
+
+| ID | Created | Phase | Parent Task | Reason | Status | Dossier |
+|----|---------|-------|-------------|--------|--------|---------|
+| 001-subtask-poc-config-screen-ios26-workaround | 2025-10-30 | Phase 1: Project Setup & Architecture Foundation | T1.2, T1.6, T1.9 | iOS 26 compatibility issues required POC config screen and deployment workaround investigation | [x] Complete | [Link](tasks/phase-1-project-setup-architecture-foundation/001-subtask-poc-config-screen-ios26-workaround.md) |
 
 ---
 

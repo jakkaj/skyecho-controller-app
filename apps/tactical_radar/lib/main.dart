@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/config_screen.dart';
 
 void main() {
   runApp(const TacticalRadarApp());
@@ -17,14 +18,7 @@ class TacticalRadarApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Tactical Radar'),
-        ),
-        body: const Center(
-          child: Text('App Setup Complete'),
-        ),
-      ),
+      home: const ConfigScreen(),
     );
   }
 }

@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Tactical Radar: jakphone (Physical Device)",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/apps/tactical_radar/lib/main.dart",
+      "cwd": "${workspaceFolder}/apps/tactical_radar",
+      "deviceId": "00008150-000625063A20401C"
+    },
+    {
+      "name": "Tactical Radar: iPhone Simulator",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/apps/tactical_radar/lib/main.dart",
+      "cwd": "${workspaceFolder}/apps/tactical_radar",
+      "deviceId": "B54553DB-FC61-473F-B612-8177A2A64F28"
+    },
+    {
+      "name": "Tactical Radar: iOS Simulator (Auto)",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/apps/tactical_radar/lib/main.dart",
+      "cwd": "${workspaceFolder}/apps/tactical_radar"
+    }
+  ]
+}

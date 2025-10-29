@@ -137,3 +137,63 @@ gdl90-capture-0x65:
 
 # Full GDL90 validation: install deps, analyze, format, run tests
 gdl90-validate: gdl90-install gdl90-analyze gdl90-test
+
+# === Tactical Radar App Commands (apps/tactical_radar/) ===
+
+# Install dependencies for the Tactical Radar app
+app-install:
+    cd apps/tactical_radar && flutter pub get
+
+# Run static analysis on the Tactical Radar app
+app-analyze:
+    cd apps/tactical_radar && dart analyze
+
+# Format code in the Tactical Radar app
+app-format:
+    cd apps/tactical_radar && dart format .
+
+# Run all tests for the Tactical Radar app
+app-test:
+    cd apps/tactical_radar && flutter test
+
+# Build iOS app for physical device (debug)
+app-build-ios DEVICE='00008150-000625063A20401C':
+    cd apps/tactical_radar && flutter build ios --debug --device-id {{DEVICE}}
+
+# Build iOS app for physical device (release/production)
+app-build-ios-release DEVICE='00008150-000625063A20401C':
+    cd apps/tactical_radar && flutter build ios --release --device-id {{DEVICE}}
+
+# Build and install iOS app to physical device (debug)
+app-install-ios DEVICE='00008150-000625063A20401C':
+    cd apps/tactical_radar && flutter build ios --debug --device-id {{DEVICE}}
+    cd apps/tactical_radar && flutter install --device-id {{DEVICE}}
+
+# Build and install iOS app to physical device (release/production)
+app-install-ios-release DEVICE='00008150-000625063A20401C':
+    cd apps/tactical_radar && flutter build ios --release --device-id {{DEVICE}}
+    cd apps/tactical_radar && flutter install --device-id {{DEVICE}}
+
+# Build iOS app for simulator
+app-build-simulator:
+    cd apps/tactical_radar && flutter build ios --simulator --debug
+
+# Run app on physical device
+app-run-ios DEVICE='00008150-000625063A20401C':
+    cd apps/tactical_radar && flutter run --device-id {{DEVICE}}
+
+# Run app on simulator
+app-run-simulator:
+    cd apps/tactical_radar && flutter run -d "iPhone 17 Pro"
+
+# Clean Flutter build artifacts
+app-clean:
+    cd apps/tactical_radar && flutter clean
+
+# Full app validation: install deps, analyze, run tests
+app-validate: app-install app-analyze app-test
+
+# Quick development loop: format, analyze, build for device
+app-dev DEVICE='00008150-000625063A20401C': app-format app-analyze
+    cd apps/tactical_radar && flutter build ios --debug --device-id {{DEVICE}}
+    cd apps/tactical_radar && flutter install --device-id {{DEVICE}}

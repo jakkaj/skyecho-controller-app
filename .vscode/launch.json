@@ -2,6 +2,18 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Tactical Radar: iOS Simulator (Mock Data)",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/apps/tactical_radar/lib/main.dart",
+      "cwd": "${workspaceFolder}/apps/tactical_radar",
+      "args": [
+        "-d",
+        "iphone",
+        "--dart-define=USE_MOCK_GDL=true"
+      ]
+    },
+    {
       "name": "Tactical Radar: jakphone (Physical Device)",
       "type": "dart",
       "request": "launch",

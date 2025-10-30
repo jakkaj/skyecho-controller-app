@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:skyecho/skyecho.dart';
 import 'package:skyecho_gdl90/skyecho_gdl90.dart';
 
 import '../models/ownship_state.dart';
 import '../models/traffic_target.dart';
-import '../services/gdl_service.dart';
+import '../services/gdl_service_factory.dart';
+import '../services/gdl_service_interface.dart';
 
 /// Map screen displaying ownship and traffic on Google Maps with rotated arrows.
 ///
@@ -28,22 +32,26 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   // Services
-  late GdlService _gdlService;
+  late GdlServiceInterface _gdlService;
+  late SkyEchoClient _skyEchoClient;
   final Location _location = Location();
 
   // Subscriptions
   StreamSubscription<Gdl90Message>? _messagesSub;
-  StreamSubscription<bool>? _connectionSub;
 
   // UI state
   OwnshipState? _ownshipState;
   int? _ownshipBaroAltitude;
   final Map<int, TrafficTarget> _trafficTargets = {};
-  bool _isConnected = false;
   DateTime? _lastOwnshipTime;
   DateTime? _lastHeartbeatTime;
   bool _usingGpsFallback = false;
   bool _gpsRequestInProgress = false;
+
+  // SkyEcho device state (for ADS-B OUT status)
+  bool _deviceTransmitting = false;
+  bool _deviceConnected = false;
+  Timer? _devicePollTimer;
 
   // Batching state (Discovery 05: 10 FPS UI updates)
   Timer? _uiUpdateTimer;
@@ -52,64 +60,93 @@ class _MapScreenState extends State<MapScreen> {
   // Map controller
   GoogleMapController? _mapController;
 
-  // Cached arrow icons (loaded once from assets)
+  // Cached arrow icons (generated from widgets)
   BitmapDescriptor? _ownshipIcon;
   BitmapDescriptor? _trafficIcon;
 
   @override
   void initState() {
     super.initState();
+    _skyEchoClient = SkyEchoClient('http://192.168.4.1');
     _loadMarkerIcons();
     _initializeGdl();
     _checkLocationPermission();
+    _startDevicePolling();
   }
 
+  /// Create marker icons from Flutter widgets.
   Future<void> _loadMarkerIcons() async {
-    _ownshipIcon = await BitmapDescriptor.asset(
-      const ImageConfiguration(devicePixelRatio: 3.0),
-      'assets/markers/arrow_green.png',
-    );
-    _trafficIcon = await BitmapDescriptor.asset(
-      const ImageConfiguration(devicePixelRatio: 3.0),
-      'assets/markers/arrow_red.png',
-    );
+    _ownshipIcon = await _createArrowMarker(Colors.green, 48);
+    _trafficIcon = await _createArrowMarker(Colors.red, 40);
     if (mounted) setState(() {});
+  }
+
+  /// Create an arrow marker from a widget.
+  Future<BitmapDescriptor> _createArrowMarker(
+    Color color,
+    double size,
+  ) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    // Draw circle background
+    final circlePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(
+      Offset(size / 2, size / 2),
+      size / 2,
+      circlePaint,
+    );
+
+    // Draw arrow pointing up (will be rotated by marker.rotation)
+    final arrowPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    final center = size / 2;
+    final arrowSize = size * 0.6;
+
+    // Arrow pointing up
+    path.moveTo(center, center - arrowSize / 2); // Top point
+    path.lineTo(center - arrowSize / 4, center + arrowSize / 4); // Bottom left
+    path.lineTo(center, center); // Center
+    path.lineTo(center + arrowSize / 4, center + arrowSize / 4); // Bottom right
+    path.close();
+
+    canvas.drawPath(path, arrowPaint);
+
+    // Convert to image
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
   }
 
   @override
   void dispose() {
     _messagesSub?.cancel();
-    _connectionSub?.cancel();
     _uiUpdateTimer?.cancel();
+    _devicePollTimer?.cancel();
     _gdlService.disconnect();
     _gdlService.dispose();
     super.dispose();
   }
 
   Future<void> _initializeGdl() async {
-    _gdlService = GdlService();
+    // Use factory to create appropriate service (mock or real)
+    _gdlService = GdlServiceFactory.create();
 
     try {
-      // Subscribe to streams BEFORE connecting to catch initial events
-      _connectionSub = _gdlService.connectionStatus.listen((connected) {
-        if (mounted) {
-          setState(() {
-            _isConnected = connected;
-          });
-        }
-      });
+      // Subscribe to message stream
+      _messagesSub = _gdlService.messages
+          .cast<Gdl90Message>()
+          .listen(_handleGdlMessage);
 
-      _messagesSub = _gdlService.messages.listen(_handleGdlMessage);
-
-      // Now connect - this will emit initial connection status
+      // Connect to GDL90 stream
       await _gdlService.connect();
-
-      // Set initial connection state from service
-      if (mounted) {
-        setState(() {
-          _isConnected = _gdlService.isConnected;
-        });
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -155,6 +192,38 @@ class _MapScreenState extends State<MapScreen> {
       print('[PERMISSION] Location permission check complete - granted');
     } catch (e) {
       print('[PERMISSION] ERROR during permission check: $e');
+    }
+  }
+
+  /// Start polling SkyEcho device for ADS-B OUT status.
+  void _startDevicePolling() {
+    // Poll every 5 seconds (same as Config screen)
+    _devicePollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _pollDevice();
+    });
+
+    // Initial poll
+    _pollDevice();
+  }
+
+  /// Poll device for ADS-B OUT transmit status.
+  Future<void> _pollDevice() async {
+    try {
+      final config = await _skyEchoClient.fetchSetupConfig();
+
+      if (mounted) {
+        setState(() {
+          _deviceConnected = true;
+          _deviceTransmitting = config.es1090TransmitEnabled;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _deviceConnected = false;
+          _deviceTransmitting = false;
+        });
+      }
     }
   }
 
@@ -350,16 +419,19 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // App bar color based on connection status
-    final appBarColor = _isConnected
-        ? Colors
-              .green
-              .shade600 // Green when receiving data
-        : Colors.grey.shade700; // Grey when disconnected
+    // App bar is green when device is transmitting, gray otherwise
+    // (matches Config screen design)
+    final appBarColor = !_deviceConnected
+        ? Colors.grey.shade700
+        : _deviceTransmitting
+            ? Colors.green.shade600
+            : Colors.grey.shade700;
 
-    final statusText = _isConnected
-        ? 'GDL90 - RECEIVING'
-        : 'GDL90 - DISCONNECTED';
+    final statusText = !_deviceConnected
+        ? 'SkyEcho - DISCONNECTED'
+        : _deviceTransmitting
+            ? 'SkyEcho - TRANSMITTING'
+            : 'SkyEcho - STANDBY';
 
     return Scaffold(
       appBar: AppBar(
@@ -388,24 +460,22 @@ class _MapScreenState extends State<MapScreen> {
     final isStale = _lastHeartbeatTime == null ||
         now.difference(_lastHeartbeatTime!) > const Duration(seconds: 5);
 
-    final bgColor = isStale ? Colors.red : Colors.green.shade700;
-    final text = isStale ? 'NO HEARTBEAT' : 'HEARTBEAT OK';
+    // Show green circle (white outline) if heartbeat OK, red if stale
+    final fillColor = isStale ? Colors.red : Colors.green;
 
     return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
+      top: 8,
+      right: 8,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        color: bgColor,
-        child: Text(
-          text,
-          style: const TextStyle(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: fillColor,
+          border: Border.all(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
+            width: 2,
           ),
-          textAlign: TextAlign.center,
         ),
       ),
     );

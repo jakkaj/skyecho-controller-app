@@ -40,6 +40,12 @@ dependencies:
   # State management
   flutter_riverpod: ^3.0.3
 
+  # Maps
+  google_maps_flutter: ^2.5.0
+
+  # Location services for GPS fallback
+  location: ^5.0.0
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -70,9 +76,13 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/markers/arrow_green.png
+    - assets/markers/arrow_green@2x.png
+    - assets/markers/arrow_green@3x.png
+    - assets/markers/arrow_red.png
+    - assets/markers/arrow_red@2x.png
+    - assets/markers/arrow_red@3x.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -1069,6 +1069,7 @@ Mid-implementation detours requiring structured tracking.
 | ID | Created | Phase | Parent Task | Reason | Status | Dossier |
 |----|---------|-------|-------------|--------|--------|---------|
 | 001-subtask-poc-config-screen-ios26-workaround | 2025-10-30 | Phase 1: Project Setup & Architecture Foundation | T1.2, T1.6, T1.9 | iOS 26 compatibility issues required POC config screen and deployment workaround investigation | [x] Complete | [Link](tasks/phase-1-project-setup-architecture-foundation/001-subtask-poc-config-screen-ios26-workaround.md) |
+| 002-subtask-gdl90-map-integration-with-apple-maps-and-traffic-display | 2025-10-30 | Phase 1: Project Setup & Architecture Foundation | T1.5 (T001, T008, T012) | Validate skyecho_gdl90 package integration with working map POC; establish service layer patterns and GDL90 stream data flow | [ ] Pending | [Link](tasks/phase-1-project-setup-architecture-foundation/002-subtask-gdl90-map-integration-with-apple-maps-and-traffic-display.md) |
 
 ---
 

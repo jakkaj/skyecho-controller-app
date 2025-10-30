@@ -10,19 +10,23 @@
       "deviceId": "00008150-000625063A20401C"
     },
     {
-      "name": "Tactical Radar: iPhone Simulator",
-      "type": "dart",
-      "request": "launch",
-      "program": "${workspaceFolder}/apps/tactical_radar/lib/main.dart",
-      "cwd": "${workspaceFolder}/apps/tactical_radar",
-      "deviceId": "B54553DB-FC61-473F-B612-8177A2A64F28"
-    },
-    {
       "name": "Tactical Radar: iOS Simulator (Auto)",
       "type": "dart",
       "request": "launch",
       "program": "${workspaceFolder}/apps/tactical_radar/lib/main.dart",
-      "cwd": "${workspaceFolder}/apps/tactical_radar"
+      "cwd": "${workspaceFolder}/apps/tactical_radar",
+      "args": [
+        "-d",
+        "iphone"
+      ]
+    },
+    {
+      "name": "Tactical Radar: iPhone 17 Pro Max (Simulator)",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/apps/tactical_radar/lib/main.dart",
+      "cwd": "${workspaceFolder}/apps/tactical_radar",
+      "deviceId": "F06C5FCE-E702-4294-AE55-61EA7007093A"
     }
   ]
 }

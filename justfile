@@ -164,9 +164,9 @@ app-build-ios DEVICE='00008150-000625063A20401C':
 app-build-ios-release DEVICE='00008150-000625063A20401C':
     cd apps/tactical_radar && flutter build ios --release --device-id {{DEVICE}}
 
-# Build and install iOS app to physical device (debug)
+# Build and install iOS app to physical device (release)
 app-install-ios DEVICE='00008150-000625063A20401C':
-    cd apps/tactical_radar && flutter build ios --debug --device-id {{DEVICE}}
+    cd apps/tactical_radar && flutter build ios --release --device-id {{DEVICE}}
     cd apps/tactical_radar && flutter install --device-id {{DEVICE}}
 
 # Build and install iOS app to physical device (release/production)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/config_screen.dart';
 import 'screens/map_screen.dart';
+import 'screens/profiles_screen.dart';
 
 void main() {
   runApp(const TacticalRadarApp());
@@ -39,6 +40,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   static const List<Widget> _screens = [
     ConfigScreen(),
     MapScreen(),
+    ProfilesScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -63,6 +65,10 @@ class _MainScaffoldState extends State<MainScaffold> {
           BottomNavigationBarItem(
             icon: Icon(Icons.map),
             label: 'Map',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.flight),
+            label: 'Planes',
           ),
         ],
         currentIndex: _selectedIndex,

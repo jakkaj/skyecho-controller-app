@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:skyecho/skyecho.dart';
-import 'package:uuid/uuid.dart';
 import '../models/aircraft_profile.dart';
 import '../services/profile_repository.dart';
 
@@ -21,8 +20,7 @@ class ConfigScreen extends StatefulWidget {
   State<ConfigScreen> createState() => _ConfigScreenState();
 }
 
-class _ConfigScreenState extends State<ConfigScreen>
-    with WidgetsBindingObserver {
+class _ConfigScreenState extends State<ConfigScreen> {
   // SkyEcho client
   late final SkyEchoClient _client;
 
@@ -38,6 +36,8 @@ class _ConfigScreenState extends State<ConfigScreen>
   int _failureCount = 0;
   String? _errorMessage;
   bool _hasUserEdits = false;
+  // Used in T022 to pause polling during profile selection
+  // ignore: unused_field
   bool _isSelectingProfile = false;
 
   // Polling timer
@@ -50,9 +50,6 @@ class _ConfigScreenState extends State<ConfigScreen>
   @override
   void initState() {
     super.initState();
-
-    // Register lifecycle observer
-    WidgetsBinding.instance.addObserver(this);
 
     _client = SkyEchoClient('http://192.168.4.1');
     _hexController = TextEditingController();
@@ -73,9 +70,6 @@ class _ConfigScreenState extends State<ConfigScreen>
 
   @override
   void dispose() {
-    // Unregister lifecycle observer
-    WidgetsBinding.instance.removeObserver(this);
-
     _pollTimer?.cancel();
     _profileSubscription?.cancel();
     _hexController.dispose();
@@ -83,20 +77,7 @@ class _ConfigScreenState extends State<ConfigScreen>
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-
-    // Auto-select profile when app resumes
-    if (state == AppLifecycleState.resumed) {
-      _autoSelectProfileFromDevice();
-    }
-  }
-
   Future<void> _loadProfileEntries() async {
-    // Initialize repository if not already done
-    await ProfileRepository.instance.init();
-
     final profiles = await ProfileRepository.instance.getForDropdown();
     if (mounted) {
       setState(() {
@@ -133,7 +114,7 @@ class _ConfigScreenState extends State<ConfigScreen>
   void _startPolling() {
     // Poll every 5 seconds
     _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!_isSaving && !_isSelectingProfile) {
+      if (!_isSaving) {
         _pollDevice();
       }
     });
@@ -143,9 +124,6 @@ class _ConfigScreenState extends State<ConfigScreen>
   }
 
   Future<void> _pollDevice() async {
-    // T022: Skip polling when saving or selecting profile
-    if (_isSaving || _isSelectingProfile) return;
-
     try {
       final config = await _client.fetchSetupConfig();
 
@@ -180,168 +158,6 @@ class _ConfigScreenState extends State<ConfigScreen>
         });
       }
     }
-  }
-
-  /// T020: Auto-selects profile from device with progressive enhancement.
-  ///
-  /// Steps:
-  /// 1. Load last-used profile hex (fallback)
-  /// 2. Fetch device config with 10s timeout
-  /// 3. Normalize device hex and lookup profile
-  /// 4. If found: auto-select; if not found: auto-create (T021)
-  /// 5. If timeout/error: show offline toast
-  Future<void> _autoSelectProfileFromDevice() async {
-    print('[CONFIG] Auto-selecting profile from device');
-
-    // Step 1: Load last-used profile as fallback
-    final lastUsedHex = await ProfileRepository.instance.getLastUsedHex();
-    if (lastUsedHex != null) {
-      final fallbackProfile =
-          await ProfileRepository.instance.getByHex(lastUsedHex);
-      if (fallbackProfile != null && mounted) {
-        setState(() {
-          _hexController.text = fallbackProfile.icaoHex;
-          _callsignController.text = fallbackProfile.callsign;
-        });
-        print('[CONFIG] Loaded fallback profile: ${fallbackProfile.callsign}');
-      }
-    }
-
-    // Step 2: Fetch device config with 10s timeout
-    try {
-      final config = await _client
-          .fetchSetupConfig()
-          .timeout(const Duration(seconds: 10));
-
-      if (!mounted) return;
-
-      // Step 3: Normalize device hex and lookup
-      final deviceHex = config.icaoAddress.trim().toUpperCase();
-      final deviceCallsign = config.callsign.trim();
-
-      final existingProfile =
-          await ProfileRepository.instance.getByHex(deviceHex);
-
-      // Step 4a: Found - auto-select
-      if (existingProfile != null) {
-        setState(() {
-          _hexController.text = existingProfile.icaoHex;
-          _callsignController.text = existingProfile.callsign;
-          _hasUserEdits = false;
-        });
-        await ProfileRepository.instance.setLastUsed(existingProfile.icaoHex);
-        print('[CONFIG] Auto-selected profile: ${existingProfile.callsign}');
-      } else {
-        // Step 4b: Not found - auto-create (T021)
-        await _handleUnknownDeviceHex(deviceHex, deviceCallsign);
-      }
-    } on TimeoutException {
-      // Step 5: Timeout - show offline message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Device offline – using last known profile'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-      print('[CONFIG] Device timeout - using fallback profile');
-    } on SkyEchoError catch (e) {
-      // Step 5: Error - show offline message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Device offline – using last known profile\n${e.message}',
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-      print('[CONFIG] Device error: ${e.message}');
-    }
-  }
-
-  /// T021: Handles unknown device hex by auto-creating profile.
-  ///
-  /// Creates new profile with:
-  /// - UUID id
-  /// - Provided or generated callsign
-  /// - Current timestamps
-  /// - Auto-selects in dropdown
-  /// - Sets as last used
-  Future<void> _handleUnknownDeviceHex(String hex, String callsign) async {
-    print('[CONFIG] Handling unknown device hex: $hex');
-
-    // Generate placeholder callsign if empty
-    final effectiveCallsign = callsign.isEmpty || callsign.trim().isEmpty
-        ? _generatePlaceholderCallsign(hex)
-        : callsign.trim();
-
-    final isPlaceholder =
-        effectiveCallsign == _generatePlaceholderCallsign(hex);
-
-    // Validate callsign length
-    if (effectiveCallsign.length > 50) {
-      print('[CONFIG] Callsign too long: ${effectiveCallsign.length} chars');
-      return;
-    }
-
-    // Create new profile
-    const uuid = Uuid();
-    final now = DateTime.now();
-    final newProfile = AircraftProfile(
-      id: uuid.v4(),
-      icaoHex: hex,
-      callsign: effectiveCallsign,
-      createdAt: now,
-      updatedAt: now,
-    );
-
-    try {
-      await ProfileRepository.instance.save(newProfile);
-
-      // Auto-select in UI
-      if (mounted) {
-        setState(() {
-          _hexController.text = newProfile.icaoHex;
-          _callsignController.text = newProfile.callsign;
-          _hasUserEdits = false;
-        });
-
-        // Show toast
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isPlaceholder
-                  ? 'New aircraft added with temporary callsign - please update'
-                  : 'New aircraft added: $effectiveCallsign',
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-
-      // Set as last used
-      await ProfileRepository.instance.setLastUsed(hex);
-
-      print('[CONFIG] Created and selected new profile: $effectiveCallsign');
-    } catch (e) {
-      print('[CONFIG] Error creating profile: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error creating profile: $e'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-
-  /// Helper for T021: Generates placeholder callsign.
-  String _generatePlaceholderCallsign(String hex) {
-    return 'Aircraft-${hex.toUpperCase()}';
   }
 
   Future<void> _handleSave() async {
@@ -458,19 +274,18 @@ class _ConfigScreenState extends State<ConfigScreen>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Aircraft Profile Dropdown
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: DropdownMenu<AircraftProfile>(
-                requestFocusOnTap: false,
-                hintText: _profileEntries.isEmpty
-                    ? 'No saved aircraft - tap Planes to add'
-                    : 'Select aircraft',
-                dropdownMenuEntries: _profileEntries,
-                onSelected: _handleProfileSelected,
-                enabled: _isConnected && !_isSaving && _profileEntries.isNotEmpty,
-                expandedInsets: EdgeInsets.zero,
+            if (_profileEntries.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: DropdownMenu<AircraftProfile>(
+                  requestFocusOnTap: false,
+                  hintText: 'Select aircraft',
+                  dropdownMenuEntries: _profileEntries,
+                  onSelected: _handleProfileSelected,
+                  enabled: _isConnected && !_isSaving,
+                  expandedInsets: EdgeInsets.zero,
+                ),
               ),
-            ),
 
             // ICAO Hex Address
             TextField(

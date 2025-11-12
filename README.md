@@ -241,6 +241,115 @@ skyecho-controller-app/
 └── README.md                         # This file
 ```
 
+## Saved Aircraft Profiles
+
+The Tactical Radar app includes a saved aircraft profiles feature that allows you to quickly switch between multiple aircraft without re-entering callsign and ICAO hex codes.
+
+### What It Does
+
+- **Save Aircraft**: Store callsign + ICAO hex pairs for all your aircraft
+- **Quick Selection**: Choose from a dropdown on the home screen
+- **Auto-Sync**: Automatically selects the profile matching your connected device
+- **Auto-Creation**: Creates new profiles when connecting to unknown aircraft
+- **Persistent Storage**: Profiles saved locally and persist across app restarts
+
+### Getting Started
+
+#### 1. Access the Planes Screen
+
+Tap the **"Planes"** tab in the bottom navigation bar to manage your saved aircraft.
+
+#### 2. Add Your First Aircraft
+
+1. Tap the **+** button (floating action button)
+2. Enter your aircraft's **callsign** (e.g., "N12345" or "VH-ABC")
+3. Enter your aircraft's **ICAO hex code** (e.g., "7CC599")
+   - You can enter in any format: `7cc599`, `0x7CC599`, or `ABC123`
+   - The app automatically normalizes to uppercase 6-digit format
+4. Tap **"Save"**
+
+Your aircraft profile is now saved and will appear in the list.
+
+#### 3. Edit or Delete Profiles
+
+- **Edit**: Tap a profile in the list to modify callsign or hex code
+- **Delete**: Tap the delete icon (🗑️) and confirm
+
+#### 4. Quick Selection on Home Screen
+
+On the **Config** tab, you'll see a dropdown labeled "Select aircraft" above the hex/callsign fields:
+
+1. Tap the dropdown to see all your saved aircraft
+2. Select an aircraft to instantly populate the fields
+3. Tap **"Save"** to apply the configuration to your SkyEcho device
+
+### Auto-Selection (Device Sync)
+
+When you connect to a SkyEcho device:
+
+- **Known Aircraft**: If the device's hex code matches a saved profile, that profile is automatically selected
+- **New Aircraft**: If the device's hex code is unknown, the app creates a new profile and auto-selects it
+- **Offline Mode**: If the device is offline, the app uses your last-used profile as a fallback
+
+You'll see a notification when profiles are auto-created or when the device is offline.
+
+### How Dropdown Auto-Selection Works
+
+The dropdown shows your saved aircraft in alphabetical order by callsign, with your **last-used aircraft pinned to the top** for quick access.
+
+**Example:**
+```
+VH-ABC (7CC599)  ← Last used (pinned to top)
+─────────────────
+N12345 (ABC123)  ← Alphabetical
+N67890 (DEF456)
+VH-XYZ (999ABC)
+```
+
+### Duplicate Prevention
+
+The app prevents duplicate hex codes:
+
+- If you try to save a profile with a hex that already exists, you'll see an error message: *"Aircraft with hex ABC123 already exists (N12345)"*
+- **Solution**: Edit the existing profile or use a different hex code
+- Hex matching is **case-insensitive**, so `7cc599` and `7CC599` are treated as duplicates
+
+### Troubleshooting
+
+**"Device offline – using last known profile"**
+- The app couldn't connect to your SkyEcho device within 10 seconds
+- Your last-used profile is loaded as a fallback
+- Check that you're connected to the SkyEcho WiFi network and the device is powered on
+
+**"New aircraft added with temporary callsign - please update"**
+- The device had a hex code but no callsign configured
+- A placeholder callsign like "Aircraft-7CC599" was auto-generated
+- Tap the profile in the Planes screen to update it with the correct callsign
+
+**Profile changes in Planes screen don't appear in Config dropdown**
+- This should happen automatically via real-time sync
+- If the dropdown doesn't update, try navigating away and back to the Config tab
+
+**Can't delete the last profile**
+- You can delete all profiles - the app will show an empty state with instructions
+
+### Data Storage
+
+- Profiles are stored **locally on your device** using SharedPreferences
+- **No cloud sync** - profiles are device-specific
+- Profiles persist across app restarts and updates
+- Maximum recommended profiles: ~20 (no hard limit)
+
+### Tips
+
+✅ **Enter hex in any format** - The app accepts `0x7CC599`, `7cc599`, or `ABC123`
+
+✅ **Trust the auto-creation** - When connecting to a new aircraft, the app will create a profile automatically
+
+✅ **Use descriptive callsigns** - Makes it easier to identify aircraft in the dropdown
+
+✅ **Verify before saving** - Always double-check the callsign and hex match your aircraft documentation
+
 ## Safety Notes
 
 ⚠️ **ADS-B Transmit**: The library includes runtime safety checks to prevent accidental activation of ADS-B transmit functionality. The example CLI application enforces these checks. Always verify transmit flags are disabled before applying configuration updates.

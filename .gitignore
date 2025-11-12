@@ -37,3 +37,11 @@ doc/api/
 .flutter-plugins-dependencies
 docs/plans/.DS_Store
 packages/skyecho/coverage/lcov.info
+changes.md
+codebase.md
+
+
+.flowspace/*
+!.flowspace/config.yaml
+!.flospace/registry.yaml
+!.flowspace/output/lfl/condensed.jsonl

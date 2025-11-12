@@ -80,6 +80,7 @@ flutter:
     - assets/markers/arrow_green.png
     - assets/markers/arrow_green@2x.png
     - assets/markers/arrow_green@3x.png
+    - assets/markers/arrow_green_tiny.png
     - assets/markers/arrow_red.png
     - assets/markers/arrow_red@2x.png
     - assets/markers/arrow_red@3x.png

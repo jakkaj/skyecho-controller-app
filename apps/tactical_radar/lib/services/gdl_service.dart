@@ -73,8 +73,9 @@ class GdlService implements GdlServiceInterface {
         onDone: _handleStreamClosed,
       );
 
-      _isConnected = true;
-      _connectionController.add(true);
+      // Don't set _isConnected = true here. UDP socket binding always succeeds
+      // even when no device is connected (UDP is connectionless).
+      // Connection state will be set to true when first message is received.
 
       // Start health monitoring
       _startHealthMonitoring();
@@ -110,12 +111,20 @@ class GdlService implements GdlServiceInterface {
 
   /// Handle incoming GDL90 events using sealed class pattern matching.
   ///
-  /// Discovery 01: skyecho_gdl90 never throws from parser - all errors are events.
+  /// Discovery 01: skyecho_gdl90 never throws from parser - all errors are
+  /// events.
   void _handleEvent(Gdl90Event event) {
     switch (event) {
       case Gdl90DataEvent(:final message):
         _lastMessageTime = DateTime.now();
         _errorCount = 0; // Reset error count on successful message
+
+        // Set connected state on first message received
+        // (UDP socket binding succeeds even without device connection)
+        if (!_isConnected) {
+          _isConnected = true;
+          _connectionController.add(true);
+        }
 
         // Update internal state based on message type
         if (message.messageType == Gdl90MessageType.ownship) {

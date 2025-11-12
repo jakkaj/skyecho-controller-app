@@ -1,0 +1,745 @@
+# Saved Aircraft Profiles Implementation Plan
+
+**Plan Version**: 1.0.0
+**Created**: 2025-11-12
+**Spec**: [saved-aircraft-profiles-spec.md](./saved-aircraft-profiles-spec.md)
+**Status**: DRAFT
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Technical Context](#technical-context)
+3. [Critical Research Findings](#critical-research-findings)
+4. [Gates](#gates)
+5. [Testing Philosophy](#testing-philosophy)
+6. [Implementation Phases](#implementation-phases)
+   - [Phase 1: Saved Aircraft Profiles - Complete Feature](#phase-1-saved-aircraft-profiles---complete-feature)
+7. [Cross-Cutting Concerns](#cross-cutting-concerns)
+8. [Complexity Tracking](#complexity-tracking)
+9. [Progress Tracking](#progress-tracking)
+10. [Change Footnotes Ledger](#change-footnotes-ledger)
+11. [Appendices](#appendices)
+
+---
+
+## Executive Summary
+
+### Problem Statement
+Pilots flying multiple aircraft must manually re-enter callsign and ICAO hex codes into the SkyEcho configuration screen each time they switch aircraft, creating cognitive load during pre-flight operations and increasing the risk of configuration errors.
+
+### Solution Approach
+- **Pre-saved profiles**: Store aircraft configuration profiles (callsign + hex pairs) in local device storage
+- **Quick selection**: Dropdown widget on home screen for one-tap profile selection
+- **Automatic sync**: Auto-select profile matching device's current hex on app launch/resume
+- **Seamless onboarding**: Auto-create profiles from device data when new hex detected
+- **Dedicated management**: "Planes" tab in bottom navigation for CRUD operations
+
+### Expected Outcomes
+- Zero manual typing for repeat aircraft operations
+- Sub-second profile switching via dropdown
+- Automatic fleet library building through device connections
+- Persistent profile storage across app sessions
+
+### Success Metrics
+- Dropdown selection replaces manual text input for existing aircraft
+- Auto-selection accuracy: 100% match rate when device hex is known
+- Profile persistence: 100% retention across app restarts
+- Zero duplicate hex entries after uniqueness validation
+
+---
+
+## Technical Context
+
+### Current System State
+- **Architecture**: Flutter app (`apps/tactical_radar/`) using monorepo with `skyecho` and `skyecho_gdl90` library packages
+- **Navigation**: BottomNavigationBar with IndexedStack (2 tabs: Config, Map)
+- **State Management**: StatefulWidget with `setState()` (no active Riverpod usage despite dependency)
+- **Device Communication**: Polling via `SkyEchoClient` every 5 seconds in ConfigScreen
+- **Storage**: No local persistence currently (in-memory state only)
+
+### Integration Requirements
+- Add `shared_preferences` dependency for JSON-based profile storage
+- Extend bottom navigation from 2 tabs to 3 tabs (add "Planes")
+- Integrate with existing `SkyEchoClient` polling and save workflows
+- Synchronize state between ConfigScreen and new ProfilesScreen using service singleton
+
+### Constraints and Limitations
+- **Storage**: `shared_preferences` JSON list approach limits to ~10MB (sufficient for <100 profiles)
+- **IndexedStack**: All 3 screens remain in memory simultaneously (acceptable for simple screens)
+- **No state library**: Continue vanilla StatefulWidget pattern (no Riverpod migration)
+- **Lightweight testing**: Focus on core CRUD and sync; skip exhaustive edge cases per spec
+
+### Assumptions
+- Users manage <20 aircraft profiles (no pagination needed)
+- Device is reachable via WiFi during configuration operations
+- Profile data never leaves device (local-only storage, no cloud sync)
+- Config screen polling interval (5s) is sufficient for sync operations
+
+---
+
+## Critical Research Findings
+
+### 🚨 Critical Discovery 01: No Local Storage Dependency Installed
+**Impact**: Critical
+**Sources**: [S2-01] (technical investigator)
+**Problem**: Project has NO local persistence dependencies. Must choose and add storage solution before implementation begins.
+**Root Cause**: App currently uses only in-memory state; ConfigScreen polls device every 5s but doesn't persist any local data.
+**Solution**: Add `shared_preferences: ^2.2.2` for simple JSON list storage. Alternative: `hive_flutter` for type-safe boxes if future extensibility (photos, metadata) is needed.
+**Example**:
+```yaml
+# ❌ WRONG - Current pubspec.yaml has no storage
+dependencies:
+  flutter_riverpod: ^3.0.3
+
+# ✅ CORRECT - Add storage dependency
+dependencies:
+  flutter_riverpod: ^3.0.3
+  shared_preferences: ^2.2.2
+```
+**Action Required**: Add shared_preferences to `apps/tactical_radar/pubspec.yaml` in Phase 1 Task 1.1
+**Affects Phases**: Phase 1 (all tasks)
+
+---
+
+### 🚨 Critical Discovery 02: Auto-Selection Timing Undefined
+**Impact**: Critical
+**Sources**: [S3-01] (spec ambiguity)
+**Problem**: Spec says auto-selection happens "when app launches" but doesn't cover resume from background, navigation between tabs, or during polling.
+**Root Cause**: iOS/Android lifecycle events (resume) vs. navigation events (tab switch) not distinguished.
+**Solution**: Auto-select on: (1) App cold start, (2) App resume from background, (3) After successful save. Do NOT auto-select during navigation or polling (would disrupt user editing).
+**Example**:
+```dart
+// ✅ CORRECT - Auto-select only on lifecycle events
+class ConfigScreenState extends State<ConfigScreen> with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _autoSelectProfileFromDevice(); // Sync on resume
+    }
+  }
+}
+```
+**Action Required**: Implement lifecycle observer in Phase 4 Task 4.2
+**Affects Phases**: Phase 4
+
+---
+
+### 🚨 Critical Discovery 03: Device Fetch Failure Handling Required
+**Impact**: Critical
+**Sources**: [S3-04] (edge case)
+**Problem**: Spec assumes device fetch succeeds on launch, but device may be powered off, disconnecting, or rebooting. Blocking wait causes app freeze.
+**Root Cause**: ConfigScreen shows "Not Connected" after 2 poll failures (10 seconds); during this window, dropdown UX is undefined.
+**Solution**: Progressive enhancement - load last-used profile immediately (fallback), attempt device sync in background with 10s timeout, show prompt if sync succeeds with different hex.
+**Example**:
+```dart
+// ✅ CORRECT - Non-blocking with fallback
+Future<void> _attemptDeviceSync() async {
+  try {
+    final config = await _client.fetchSetupConfig().timeout(Duration(seconds: 10));
+    // Handle sync
+  } catch (e) {
+    _showWarning('Device offline – using last known profile');
+  }
+}
+```
+**Action Required**: Implement graceful degradation in Phase 4 Task 4.3
+**Affects Phases**: Phase 4
+
+---
+
+### 🔥 High Discovery 04: Bottom Navigation Requires MainScaffold Modification
+**Impact**: High
+**Sources**: [S1-01, S4-06] (pattern analyst, dependency mapper)
+**Problem**: Current navigation uses IndexedStack with 2 screens; adding "Planes" tab requires modifying `_screens` list and `BottomNavigationBar.items` in main.dart.
+**Architectural Context**: MainScaffold manages navigation state; IndexedStack keeps all screens alive in memory.
+**Design Constraint**: ProfilesScreen must implement proper lifecycle methods (initState, dispose) since it remains mounted even when hidden.
+**Example**:
+```dart
+// ✅ CORRECT - Adding third tab
+static const List<Widget> _screens = [
+  ConfigScreen(),
+  MapScreen(),
+  ProfilesScreen(), // NEW
+];
+
+bottomNavigationBar: BottomNavigationBar(
+  items: const [
+    BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Config'),
+    BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
+    BottomNavigationBarItem(icon: Icon(Icons.flight), label: 'Planes'), // NEW
+  ],
+)
+```
+**Action Required**: Modify MainScaffold in Phase 2 Task 2.1
+**Affects Phases**: Phase 2
+
+---
+
+### 🔥 High Discovery 05: Hex Normalization Required for Uniqueness Checks
+**Impact**: High
+**Sources**: [S3-03] (edge case)
+**Problem**: Spec enforces hex uniqueness but doesn't specify normalization. `7cc599` vs `7CC599` vs `0x7CC599` should all be treated as duplicates.
+**Root Cause**: Case sensitivity and prefix variations in user input.
+**Solution**: Normalize on save: strip `0x` prefix, remove leading zeros, convert to uppercase, pad to 6 digits. Uniqueness check uses normalized form.
+**Example**:
+```dart
+// ✅ CORRECT - Normalization prevents duplicates
+String _normalizeHex(String hex) {
+  String cleaned = hex.trim().toUpperCase();
+  if (cleaned.startsWith('0X')) cleaned = cleaned.substring(2);
+  cleaned = int.parse(cleaned, radix: 16).toRadixString(16).toUpperCase().padLeft(6, '0');
+  return cleaned;
+}
+```
+**Action Required**: Implement in ProfileRepository in Phase 1 Task 1.4
+**Affects Phases**: Phase 1, Phase 2
+
+---
+
+### 🔥 High Discovery 06: Cross-Screen State Synchronization Needed
+**Impact**: High
+**Sources**: [S3-06, S4-02] (implication, state management)
+**Problem**: IndexedStack keeps ConfigScreen and ProfilesScreen alive simultaneously. Profile changes in one screen must immediately reflect in the other.
+**Root Cause**: No global state management; each screen manages state independently.
+**Solution**: Use service singleton pattern with callback notifications. ProfileRepository emits events after mutations; screens register listeners in initState.
+**Example**:
+```dart
+// ✅ CORRECT - Service singleton with notifications
+class ProfileRepository {
+  static final ProfileRepository instance = ProfileRepository._();
+  final _changeController = StreamController<ProfileEvent>.broadcast();
+
+  Stream<ProfileEvent> get changes => _changeController.stream;
+
+  Future<void> save(AircraftProfile profile) async {
+    // Save logic
+    _changeController.add(ProfileSavedEvent(profile));
+  }
+}
+```
+**Action Required**: Implement event stream in Phase 1 Task 1.5
+**Affects Phases**: Phase 1, Phase 3
+
+---
+
+### 🔥 High Discovery 07: SkyEcho API 2-Second Persistence Delay
+**Impact**: High
+**Sources**: [S2-02] (API limit)
+**Problem**: `applySetup()` requires mandatory 2-second wait after POST before verification GET. Rapid polling or saves within 3 seconds may fail.
+**Root Cause**: Device persists configuration asynchronously; HTTP connection reuse bug requires reset workaround.
+**Solution**: Never call `applySetup()` twice within 3 seconds. Debounce device fetches to minimum 5s intervals (existing polling respects this).
+**Example**:
+```dart
+// ✅ CORRECT - Respect 5s polling interval
+Timer.periodic(Duration(seconds: 5), (_) async {
+  final config = await client.fetchSetupConfig();
+  await _syncProfileWithDevice(config);
+});
+```
+**Action Required**: Ensure Phase 4 respects polling interval
+**Affects Phases**: Phase 4
+
+---
+
+### 🟡 Medium Discovery 08: Service Layer Pattern with Abstract Interfaces
+**Impact**: Medium
+**Sources**: [S1-04, S4-03] (pattern, boundary)
+**Problem**: Existing services use abstract interface + concrete implementation pattern (e.g., GdlServiceInterface). Profile storage should follow same pattern for consistency.
+**Solution**: Create `ProfileRepositoryInterface` (abstract) and `ProfileRepository` (concrete with SharedPreferences). Enables test mocks with in-memory storage.
+**Example**:
+```dart
+// ✅ CORRECT - Interface pattern
+abstract class ProfileRepositoryInterface {
+  Future<List<AircraftProfile>> getAll();
+  Future<void> save(AircraftProfile profile);
+}
+
+class ProfileRepository implements ProfileRepositoryInterface {
+  // SharedPreferences implementation
+}
+```
+**Action Required**: Create interface in Phase 1 Task 1.2
+**Affects Phases**: Phase 1
+
+---
+
+### 🟡 Medium Discovery 09: Material 3 DropdownMenu Focus Behavior Gotcha
+**Impact**: Medium
+**Sources**: [S2-03] (framework gotcha)
+**Problem**: Material 3's `DropdownMenu` has inconsistent keyboard behavior on mobile vs desktop. Flutter 3.35.7 has focus bugs where focus is lost when menu opens.
+**Root Cause**: DropdownMenu designed for searchable dropdowns with text input filtering, not picker-style behavior.
+**Solution**: Use `DropdownMenu` with `requestFocusOnTap: false` for mobile picker behavior. Alternatively, use classic `DropdownButton` for stability.
+**Example**:
+```dart
+// ✅ CORRECT - Disable keyboard on mobile
+DropdownMenu<Profile>(
+  requestFocusOnTap: false, // Prevent keyboard
+  dropdownMenuEntries: profiles.map((p) =>
+    DropdownMenuEntry(value: p, label: '${p.callsign} (${p.hex})')
+  ).toList(),
+);
+```
+**Action Required**: Configure dropdown in Phase 3 Task 3.2
+**Affects Phases**: Phase 3
+
+---
+
+### 🟡 Medium Discovery 10: Profile Ordering Default Strategy Undefined
+**Impact**: Medium
+**Sources**: [S3-05] (ambiguity)
+**Problem**: Spec left ordering undefined. Affects dropdown display order and Planes screen list order.
+**Solution**: Alphabetical by callsign with "last used" pinning at top of dropdown (but not Planes screen). Store `lastUsedAt` timestamp in profile model.
+**Example**:
+```dart
+// ✅ CORRECT - Predictable ordering
+profiles.sort((a, b) {
+  if (a.icaoHex == lastUsedHex) return -1; // Pin to top
+  if (b.icaoHex == lastUsedHex) return 1;
+  return a.callsign.compareTo(b.callsign); // Alphabetical
+});
+```
+**Action Required**: Implement sorting logic in Phase 1 Task 1.6
+**Affects Phases**: Phase 1, Phase 3
+
+---
+
+### 🟡 Medium Discovery 11: Save/Poll Race Condition Requires Locking
+**Impact**: Medium
+**Sources**: [S3-08] (edge case)
+**Problem**: ConfigScreen polls every 5s. If poll fires during save operation (2-4s duration), poll may overwrite UI fields with stale device data.
+**Root Cause**: No synchronization between save operations and polling timer.
+**Solution**: Pause polling when `_isSaving || _isSelectingProfile`. Skip poll if `_hasUserEdits = true` until save completes.
+**Example**:
+```dart
+// ✅ CORRECT - Locking during critical operations
+Future<void> _pollDevice() async {
+  if (_isSaving || _isSelectingProfile) return; // Skip poll
+  // Poll logic
+}
+```
+**Action Required**: Implement locking in Phase 4 Task 4.4
+**Affects Phases**: Phase 4
+
+---
+
+### 🟢 Low Discovery 12: No Structured Logging (Debug Print Only)
+**Impact**: Low
+**Sources**: [S4-08] (cross-cutting concern)
+**Problem**: Codebase uses raw `print()` statements with prefixes like `[PERMISSION]`, `[GPS]`. No structured logging library.
+**Solution**: Continue using `print()` for consistency. Use `[PROFILES]` prefix for profile-related logs. Consider `logger` package if structured logging becomes important.
+**Action Required**: Use `print('[PROFILES] ...')` throughout implementation
+**Affects Phases**: All phases
+
+---
+
+## Gates
+
+### GATE - Clarify
+✅ **PASSED** - All critical ambiguities resolved via /plan-2-clarify:
+- Testing Strategy: Lightweight Testing
+- Mock Usage: Avoid mocks entirely (use real storage + fixtures)
+- Documentation: README.md only
+- Duplicate Hex: Prevent duplicates entirely (uniqueness constraint)
+- Validation: Minimal (non-empty, <50 chars)
+- Conflict UX: Silent local override
+- Navigation: Bottom navigation tab
+- Selection Persistence: Always sync with device (device is source of truth)
+
+### GATE - Constitution
+✅ **PASSED** - Plan aligns with all principles:
+
+| Principle | Compliance | Evidence |
+|-----------|-----------|----------|
+| P1: Hardware-Independent Development | ✅ | Phase 1 includes in-memory repository mock; tests use real SharedPreferences in temp directory |
+| P2: Graceful Degradation | ✅ | Discovery 03 addresses device fetch failures with progressive enhancement |
+| P3: Tests as Documentation (TAD) | ✅ | Testing Philosophy section mandates Test Doc blocks; lightweight approach focuses on core scenarios |
+| P4: Type Safety | ✅ | Immutable AircraftProfile model with factory constructors; DuplicateHexError custom exception |
+| P5: Realistic Testing | ✅ | Using real SharedPreferences with temp directories; avoiding mocks per spec |
+| P6: Incremental Value | ✅ | 5 phases deliver value independently: storage → UI → integration → sync → docs |
+
+**Deviation Ledger**: None - no constitutional principles violated.
+
+### GATE - Architecture
+✅ **PASSED** - Plan respects monorepo boundaries:
+
+| Boundary | Compliance | Evidence |
+|----------|-----------|----------|
+| Package separation | ✅ | Profile feature lives in `apps/tactical_radar/lib/`, not in library packages |
+| Service layer pattern | ✅ | Discovery 08: ProfileRepositoryInterface + ProfileRepository implementation |
+| Immutable models | ✅ | Discovery 04: AircraftProfile in `lib/models/` with fromJson/toJson/copyWith |
+| Error hierarchy | ✅ | Custom ProfileStorageError, DuplicateHexError with actionable hints |
+| Navigation architecture | ✅ | Discovery 04: Extends existing BottomNavigationBar + IndexedStack pattern |
+
+**Architectural Exceptions**: None - all boundaries respected.
+
+### GATE - ADR
+⚠️ **OPTIONAL** - No existing ADRs reference this feature. Consider creating ADR for storage backend choice (`shared_preferences` vs `hive` vs `sqflite`) if decision rationale needs formal documentation.
+
+**ADR Ledger**: Empty (no blocking ADRs; creation recommended but not required for this CS-3 feature)
+
+---
+
+## Testing Philosophy
+
+### Testing Approach
+**Selected Approach**: Lightweight Testing
+**Rationale** (from spec): This is primarily a CRUD feature with straightforward UI interactions. Focus testing effort on core functionality (profile persistence, device sync matching) while avoiding exhaustive edge case coverage.
+
+### Focus Areas
+- Profile CRUD operations (create, read, update, delete) work correctly
+- Device hex matching auto-selects correct profile
+- Local override behavior when hex matches but callsign differs
+- Persistence across app restarts
+- Hex uniqueness validation
+- JSON serialization/deserialization
+
+### Excluded from Testing
+- Exhaustive edge case testing (unusual characters, extreme lengths)
+- Performance testing with large profile counts (assume <20 profiles per spec)
+- Complex concurrency scenarios (polling + saving race conditions tested but not exhaustively)
+- Detailed UI interaction testing beyond happy path
+
+### Mock Usage
+**Policy**: Avoid mocks entirely
+**Rationale** (from spec): Use real storage implementation and captured device response fixtures. This ensures tests reflect actual runtime behavior and catches integration issues early. Only mock when absolutely necessary (e.g., unavailable external services).
+
+**Implementation**:
+- Use real `SharedPreferences` with temp directories in tests
+- Use real `SkyEchoClient` with captured HTML fixtures (existing pattern from skyecho package)
+- For speed, provide `ProfileRepository.inMemory()` factory for unit tests (documented as test-only)
+
+### Lightweight Testing Strategy
+
+Each phase includes:
+1. **Core functionality test**: Validates primary user path (e.g., save profile → retrieve profile)
+2. **Error case test**: Validates one critical error scenario (e.g., duplicate hex throws exception)
+3. **Integration smoke test**: End-to-end validation with real dependencies
+
+Skip:
+- Multiple variations of same scenario
+- Boundary value testing (except critical: empty string, null)
+- Performance benchmarks
+- UI widget golden tests
+
+### Test Documentation
+Every test includes Test Doc comment block:
+```dart
+test('given_existing_hex_when_saving_duplicate_then_throws_error', () {
+  /*
+  Test Doc:
+  - Why: Enforce hex uniqueness constraint (AC #11)
+  - Contract: ProfileRepository.save throws DuplicateHexError if hex exists
+  - Usage Notes: Check for duplicates before save; catch DuplicateHexError for user feedback
+  - Quality Contribution: Prevents duplicate profiles; documents error handling contract
+  - Worked Example: save(hex='ABC123') → success; save(hex='ABC123') → DuplicateHexError
+  */
+
+  // Test implementation
+});
+```
+
+---
+
+## Implementation Phases
+
+### Phase 1: Saved Aircraft Profiles - Complete Feature
+
+**Objective**: Implement end-to-end saved aircraft profiles feature including data model, storage, UI, device sync, and documentation.
+
+**Deliverables**:
+- Data layer: `AircraftProfile` model, `ProfileRepository` with SharedPreferences
+- Management UI: "Planes" screen with CRUD operations, bottom navigation integration
+- Config integration: Dropdown selector with auto-population
+- Device sync: Auto-selection on launch/resume, auto-creation of new profiles
+- Documentation: README.md section with screenshots
+
+**Dependencies**: None (single integrated phase)
+
+**Risks**:
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| SharedPreferences not installed | Critical | High | Task 1.1 adds dependency first |
+| Device offline at launch | High | High | Progressive enhancement with fallback (Task 1.17) |
+| Cross-screen state sync | Medium | Medium | Event stream pattern (Task 1.5) |
+| Hex normalization edge cases | Medium | High | Comprehensive validation (Task 1.4) |
+
+### Tasks (Lightweight Approach)
+
+| #   | Status | Task | CS | Success Criteria | Log | Notes |
+|-----|--------|------|----|------------------|-----|-------|
+| 1.1 | [ ] | Add shared_preferences dependency to pubspec.yaml | 1 | Dependency added, `flutter pub get` succeeds | - | Critical: Must complete before other tasks |
+| 1.2 | [ ] | Create AircraftProfile model in lib/models/ with fromJson/toJson/copyWith | 2 | Immutable model compiles, includes hex/callsign/createdAt/updatedAt/id, dartdoc comments | - | Foundation for all storage |
+| 1.3 | [ ] | Create ProfileRepositoryInterface in lib/services/ | 1 | Interface with getAll, save, delete, getByHex abstract methods | - | Follow GdlServiceInterface pattern |
+| 1.4 | [ ] | Implement ProfileRepository with SharedPreferences + hex normalization | 3 | Save/load profiles as JSON, hex normalized (uppercase, no 0x prefix, case-insensitive uniqueness) | - | Include _normalizeHex helper |
+| 1.5 | [ ] | Add StreamController for profile change notifications to repository | 2 | Repository emits events on save/delete, listeners can subscribe | - | Enables cross-screen sync |
+| 1.6 | [ ] | Implement profile ordering (alphabetical + last-used pinning) | 2 | getAll() alphabetical, getForDropdown() pins last-used at top | - | Store lastUsedAt in SharedPreferences |
+| 1.7 | [ ] | Modify MainScaffold to add "Planes" as 3rd bottom nav tab | 2 | Bottom nav shows Config/Map/Planes, tapping Planes navigates to new screen | - | IndexedStack pattern |
+| 1.8 | [ ] | Create ProfilesScreen StatefulWidget with ListView.builder | 2 | Screen displays all profiles, listens to repository changes, auto-refreshes | - | Material 3 ListTile |
+| 1.9 | [ ] | Implement add/edit profile form dialog with validation | 3 | AlertDialog with callsign/hex fields, validates non-empty, shows DuplicateHexError SnackBar | - | Use UpperCaseTextFormatter for hex |
+| 1.10 | [ ] | Implement delete profile with confirmation dialog | 2 | Delete icon → confirmation → profile removed from storage and list | - | Standard AlertDialog pattern |
+| 1.11 | [ ] | Add empty state UI to ProfilesScreen | 1 | When no profiles, show "No saved aircraft - tap + to add" with icon | - | Simple Column with Icon + Text |
+| 1.12 | [ ] | Add DropdownMenu widget to ConfigScreen above hex/callsign fields | 2 | Dropdown displays with "Select aircraft" placeholder, requestFocusOnTap: false | - | Material 3 DropdownMenu |
+| 1.13 | [ ] | Populate dropdown from repository (alphabetical + last-used pinning) | 2 | Dropdown shows all profiles formatted as "CALLSIGN (HEX)" | - | Cache entries in state variable |
+| 1.14 | [ ] | Implement dropdown onChanged handler to populate TextField controllers | 2 | Selecting profile fills hex/callsign fields, sets _hasUserEdits = true | - | Prevents poll overwrite |
+| 1.15 | [ ] | Listen to repository.changes stream in ConfigScreen to refresh dropdown | 2 | Adding profile in Planes screen updates Config dropdown without manual refresh | - | Cross-screen sync |
+| 1.16 | [ ] | Add WidgetsBindingObserver mixin to ConfigScreenState for lifecycle events | 1 | didChangeAppLifecycleState called on app resume | - | Foundation for auto-selection |
+| 1.17 | [ ] | Implement _autoSelectProfileFromDevice with progressive enhancement | 3 | On resume: load last-used immediately, fetch device (10s timeout), match hex, auto-select or show prompt | - | Discovery 03 mitigation |
+| 1.18 | [ ] | Implement auto-creation logic for new hex from device | 3 | Device hex not in profiles → validate callsign, save profile, show toast, auto-select | - | Validate before saving |
+| 1.19 | [ ] | Modify _pollDevice to skip when _isSaving or _isSelectingProfile | 2 | Polling paused during save and dropdown selection (no race conditions) | - | Discovery 11 fix |
+| 1.20 | [ ] | Persist last-used hex to SharedPreferences on dropdown selection | 2 | Last-used profile ID stored, used as fallback on offline launch | - | Key: 'last_used_profile_hex' |
+| 1.21 | [ ] | Add "Saved Aircraft Profiles" section to README.md with screenshots | 2 | Section includes: feature overview, getting started, how it works, troubleshooting | - | Capture screenshots first |
+| 1.22 | [ ] | Write unit test: save and retrieve profile with JSON round-trip | 2 | Test saves profile, retrieves it, verifies all fields match | - | Use Test Doc block |
+| 1.23 | [ ] | Write unit test: duplicate hex throws DuplicateHexError with hint | 2 | Saving duplicate hex throws exception, hint message present | - | Validates AC #11 |
+| 1.24 | [ ] | Write unit test: hex normalization handles various formats | 2 | '0x7cc599' → '7CC599', 'abc' → '000ABC', case-insensitive uniqueness | - | Test 4+ formats |
+| 1.25 | [ ] | Write widget test: ProfilesScreen displays profile list | 2 | Load 2 profiles, verify both displayed with correct callsign/hex | - | flutter_test package |
+| 1.26 | [ ] | Write widget test: ConfigScreen dropdown populates fields on selection | 2 | Select profile from dropdown, verify hex/callsign TextFields updated | - | Key UX flow |
+| 1.27 | [ ] | Write integration test: auto-selection on app resume matches device hex | 2 | Simulate app resume, verify profile matching device hex auto-selected | - | Mock SkyEchoClient |
+| 1.28 | [ ] | Write integration test: auto-creation from unknown device hex | 2 | Device with new hex → profile created, saved, toast shown, auto-selected | - | End-to-end flow |
+
+**Test Examples (Write First for Lightweight!)**
+
+```dart
+// test/unit/profile_repository_test.dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tactical_radar/models/aircraft_profile.dart';
+import 'package:tactical_radar/services/profile_repository.dart';
+
+void main() {
+  late ProfileRepository repository;
+
+  setUp(() async {
+    // Use real SharedPreferences with test values
+    SharedPreferences.setMockInitialValues({});
+    repository = ProfileRepository();
+    await repository.init();
+  });
+
+  test('given_new_profile_when_saving_then_retrieves_successfully', () async {
+    /*
+    Test Doc:
+    - Why: Validate core CRUD operation (AC #1 - profile creation)
+    - Contract: Repository persists profiles and retrieves them across getInstance() calls
+    - Usage Notes: Call save() to persist; call getAll() to retrieve; profiles persist after app restart
+    - Quality Contribution: Ensures JSON serialization works; catches storage corruption issues
+    - Worked Example: save(Profile(hex='ABC123', callsign='VH-ABC')) → getAll() returns [Profile(...)]
+    */
+
+    // Arrange
+    final profile = AircraftProfile(
+      id: 'test-1',
+      hex: '7CC599',
+      callsign: 'VH-ABC',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    // Act
+    await repository.save(profile);
+    final profiles = await repository.getAll();
+
+    // Assert
+    expect(profiles, hasLength(1));
+    expect(profiles.first.hex, '7CC599');
+    expect(profiles.first.callsign, 'VH-ABC');
+  });
+
+  test('given_existing_hex_when_saving_duplicate_then_throws_duplicate_error', () async {
+    /*
+    Test Doc:
+    - Why: Enforce hex uniqueness constraint (AC #11)
+    - Contract: Repository throws DuplicateHexError if hex already exists; error includes hint
+    - Usage Notes: Check for existing hex before save OR catch DuplicateHexError for user feedback
+    - Quality Contribution: Prevents duplicate profiles; documents error handling contract
+    - Worked Example: save(hex='ABC123') → success; save(hex='ABC123') → DuplicateHexError
+    */
+
+    // Arrange
+    final profile1 = AircraftProfile(
+      id: 'test-1',
+      hex: 'ABC123',
+      callsign: 'VH-ABC',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await repository.save(profile1);
+
+    final duplicate = AircraftProfile(
+      id: 'test-2',
+      hex: 'ABC123', // Same hex
+      callsign: 'VH-XYZ', // Different callsign
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    // Act & Assert
+    expect(
+      () => repository.save(duplicate),
+      throwsA(isA<DuplicateHexError>()),
+    );
+  });
+
+  test('given_various_hex_formats_when_normalizing_then_returns_uppercase_6_digit', () async {
+    /*
+    Test Doc:
+    - Why: Prevent duplicates via case/prefix variations (Discovery 05)
+    - Contract: Hex normalization strips 0x, converts to uppercase, pads to 6 digits
+    - Usage Notes: All hex inputs normalized before storage; uniqueness check case-insensitive
+    - Quality Contribution: Catches normalization bugs; prevents user confusion from apparent duplicates
+    - Worked Example: '0x7cc599' → '7CC599', '7cc599' → '7CC599', 'abc123' → 'ABC123'
+    */
+
+    // Arrange
+    final testCases = [
+      ('0x7cc599', '7CC599'),
+      ('7cc599', '7CC599'),
+      ('ABC123', 'ABC123'),
+      ('0XABC', '000ABC'), // Leading zeros added
+    ];
+
+    for (final (input, expected) in testCases) {
+      // Act
+      final profile = AircraftProfile(
+        id: 'test-${input}',
+        hex: input,
+        callsign: 'TEST',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await repository.save(profile);
+      final saved = await repository.getByHex(input);
+
+      // Assert
+      expect(saved?.hex, expected, reason: 'Failed for input: $input');
+
+      // Cleanup for next iteration
+      await repository.delete(saved!.id);
+    }
+  });
+}
+```
+
+### Non-Happy-Path Coverage
+- [x] Duplicate hex validation (test 1.23)
+- [x] Hex normalization edge cases (test 1.24)
+- [x] Device offline at launch (task 1.17 progressive enhancement)
+- [x] Auto-creation from unknown hex (test 1.28)
+- [ ] Empty callsign validation (form prevents save)
+- [ ] Delete last profile (empty state shown)
+
+### Acceptance Criteria
+- [ ] All 28 tasks completed successfully
+- [ ] All unit tests passing (3 minimum: 1.22, 1.23, 1.24)
+- [ ] All widget tests passing (2 minimum: 1.25, 1.26)
+- [ ] All integration tests passing (2 minimum: 1.27, 1.28)
+- [ ] "Planes" tab visible in bottom navigation
+- [ ] ProfilesScreen displays profiles, CRUD operations work
+- [ ] ConfigScreen dropdown auto-selects profile matching device hex
+- [ ] Auto-creation creates profile when device hex is new
+- [ ] Progressive enhancement handles offline device gracefully
+- [ ] README.md updated with feature documentation
+- [ ] `dart analyze` clean (no warnings/errors)
+- [ ] Hex uniqueness enforced (duplicate shows SnackBar error)
+
+---
+
+- No CS ≥ 4 components: No feature flags or staged rollout required
+
+---
+
+## Progress Tracking
+
+### Phase Completion Checklist
+- [ ] Phase 1: Saved Aircraft Profiles - Complete Feature - NOT STARTED
+
+### STOP Rule
+**IMPORTANT**: This plan must be complete before creating tasks. After writing this plan:
+1. Run `/plan-4-complete-the-plan` to validate readiness
+2. Only proceed to `/plan-5-phase-tasks-and-brief` after validation passes
+
+---
+
+## Change Footnotes Ledger
+
+**NOTE**: This section will be populated during implementation by plan-6a-update-progress.
+
+**Footnote Numbering Authority**: plan-6a-update-progress is the **single source of truth** for footnote numbering across the entire plan.
+
+**Initial State** (before implementation begins):
+```markdown
+[^1]: [To be added during implementation via plan-6a]
+[^2]: [To be added during implementation via plan-6a]
+[^3]: [To be added during implementation via plan-6a]
+...
+```
+
+---
+
+## Appendices
+
+### Appendix A: Anchor Naming Conventions
+
+All deep links in the FlowSpace provenance graph use kebab-case anchors for consistency and reliability.
+
+**Phase Anchors**: `phase-{number}-{slug}`
+Example: `phase-1-data-model-storage-layer` (generated from "Phase 1: Data Model & Storage Layer")
+
+**Task Anchors (Plan)**: `task-{number}-{slug}` (use flattened plan task number like "13" for task 1.3)
+Example: `task-13-create-aircraftprofile-model` (generated from Task 1.3 with name "Create AircraftProfile model")
+
+**Slugification Rules**:
+1. Convert to lowercase
+2. Replace spaces with hyphens
+3. Replace non-alphanumeric characters (except hyphens) with hyphens
+4. Collapse multiple consecutive hyphens to single hyphen
+5. Trim leading and trailing hyphens
+
+**Command**:
+```bash
+ANCHOR=$(echo "${INPUT}" | tr ' ' '-' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+```
+
+### Appendix B: Research Summary
+
+**Total Discoveries**: 32 (12 critical/high impact, 20 consolidated into 12 final discoveries)
+
+**Key Architectural Decisions**:
+1. **Storage**: SharedPreferences with JSON serialization (lightweight, sufficient for <100 profiles)
+2. **State Management**: Continue StatefulWidget + setState pattern (no Riverpod migration)
+3. **Navigation**: Extend existing BottomNavigationBar + IndexedStack (add 3rd tab)
+4. **Service Pattern**: ProfileRepositoryInterface + ProfileRepository implementation (testability)
+5. **Auto-Selection**: Lifecycle observer pattern (app launch + resume, not during navigation/polling)
+6. **Hex Normalization**: Strip prefix, uppercase, pad to 6 digits (case-insensitive uniqueness)
+
+**Critical Mitigations**:
+- Discovery 01: Add shared_preferences dependency (Phase 1 Task 1.1)
+- Discovery 02: Lifecycle observer for resume events (Phase 4 Task 4.1)
+- Discovery 03: Progressive enhancement with fallback (Phase 4 Task 4.3)
+- Discovery 05: Hex normalization helper (Phase 1 Task 1.4)
+- Discovery 06: Event stream for cross-screen sync (Phase 1 Task 1.5)
+- Discovery 11: Polling lock during save/selection (Phase 4 Task 4.5)
+
+---
+
+**End of Plan**
+
+---
+
+**Validation Checklist** (for /plan-4-complete-the-plan):
+- ✅ TOC includes all sections
+- ✅ All phases have numbered tasks (9 tasks in Phase 1, 10 in Phase 2, 8 in Phase 3, 9 in Phase 4, 6 in Phase 5)
+- ✅ Each task has clear success criteria
+- ✅ Test examples provided for each phase (Phases 1-4)
+- ✅ Lightweight testing approach evident (core tests only, no exhaustive coverage)
+- ✅ Mock usage policy mirrors spec (avoid mocks, use real SharedPreferences)
+- ✅ Absolute paths used throughout (`/Users/jordanknight/github/skyecho-controller-app/apps/tactical_radar/...`)
+- ✅ Dependencies clearly stated (Phase 1 → 2 → 3 → 4 → 5)
+- ✅ Risks identified with mitigations
+- ✅ Acceptance criteria measurable
+- ✅ Cross-cutting concerns addressed
+- ✅ Constitution/Architecture gates passed (no deviations)
+- ✅ No time estimates (only CS complexity scores used)
+- ✅ 12 critical/high discoveries documented with code examples
